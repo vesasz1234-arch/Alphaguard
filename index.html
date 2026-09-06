@@ -1,69 +1,1818 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALPHA GUARD - 포트폴리오 감사 엔진</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-        h1 { font-size: 24px; margin-bottom: 10px; color: #38bdf8; }
-        p.subtitle { color: #94a3b8; margin-bottom: 30px; }
-        .box { background: #0f172a; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #334155; }
-        textarea { width: 100%; height: 100px; background: #1e293b; color: #fff; border: 1px solid #475569; padding: 12px; border-radius: 6px; font-size: 14px; resize: vertical; box-sizing: border-box; }
-        button { background: #0284c7; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
-        button:hover { background: #0369a1; }
-        #status { margin-top: 15px; font-size: 14px; color: #cbd5e1; }
-        .result-box { margin-top: 20px; display: none; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>알파가드</title>
+<meta name="description" content="금융상품의 명목적 특성과 실제 위험 사이의 간극을 과거 데이터로 계측합니다. 예측하지 않습니다.">
+<style>
+:root{
+  --paper:#F6F8FB; --panel:#FFFFFF; --ink:#141D2B; --ink2:#56637A; --ink3:#8794A8;
+  --rule:#DCE2EC; --rule2:#EDF1F6;
+  --signal:#A2620A; --signal-soft:#F5EADA; --signal-line:#C07C1B;
+  --loss:#9E2B2B; --loss-soft:#F7E7E7;
+  --base:#3E4C63; --naive:#9AA8C0;
+  --ok:#1F6B54; --ok-soft:#E4F0EB;
+  --shadow:0 1px 2px rgba(20,29,43,.06),0 8px 24px -12px rgba(20,29,43,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D131C; --panel:#131B27; --ink:#E7EDF6; --ink2:#9AA8BE; --ink3:#6E7C93;
+    --rule:#23303F; --rule2:#1A242F;
+    --signal:#E0A64E; --signal-soft:#2A2113; --signal-line:#E0A64E;
+    --loss:#E07575; --loss-soft:#2B1717;
+    --base:#93A3BC; --naive:#5A6982;
+    --ok:#5DBE9C; --ok-soft:#14261F;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D131C; --panel:#131B27; --ink:#E7EDF6; --ink2:#9AA8BE; --ink3:#6E7C93;
+  --rule:#23303F; --rule2:#1A242F;
+  --signal:#E0A64E; --signal-soft:#2A2113; --signal-line:#E0A64E;
+  --loss:#E07575; --loss-soft:#2B1717;
+  --base:#93A3BC; --naive:#5A6982;
+  --ok:#5DBE9C; --ok-soft:#14261F;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:'Pretendard','Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',system-ui,-apple-system,sans-serif;
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono{font-family:ui-monospace,'D2Coding','SFMono-Regular',Consolas,'Liberation Mono',monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+header{border-bottom:1px solid var(--rule);background:var(--panel)}
+.hd{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:22px 0 18px}
+.mark{font-weight:700;font-size:21px;letter-spacing:-.02em}
+.mark span{color:var(--signal)}
+.tag{font-size:14.5px;color:var(--ink2)}
+.chips{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.chip{font-size:11.5px;letter-spacing:.04em;padding:4px 9px;border:1px solid var(--rule);
+  border-radius:2px;color:var(--ink2);background:var(--paper);white-space:nowrap}
+nav.tabs{display:flex;border-bottom:1px solid var(--rule);background:var(--panel);overflow-x:auto}
+nav.tabs button{appearance:none;background:none;border:0;border-bottom:2px solid transparent;
+  padding:13px 2px;margin-right:26px;font:inherit;font-weight:500;font-size:14.5px;
+  color:var(--ink3);cursor:pointer;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink2)}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--signal)}
+nav.tabs button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+main{padding:26px 0 8px}
+.cols{display:grid;grid-template-columns:292px 1fr;gap:26px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.ctl{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:18px;box-shadow:var(--shadow)}
+.ctl h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin:0 0 12px;font-weight:600}
+.ctl h2:not(:first-child){margin-top:22px;padding-top:18px;border-top:1px solid var(--rule2)}
+label.fld{display:block;font-size:12.5px;color:var(--ink2);margin-bottom:5px}
+select{width:100%;padding:9px 10px;border:1px solid var(--rule);border-radius:3px;
+  background:var(--paper);color:var(--ink);font:inherit;font-size:14px}
+select:focus{outline:2px solid var(--signal);outline-offset:1px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;padding:7px 8px;border:1px solid var(--rule);background:var(--paper);
+  border-radius:3px;font:inherit;font-size:12.5px;color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--signal-soft);border-color:var(--signal-line);color:var(--signal);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--signal);outline-offset:1px}
+.stack{display:flex;flex-direction:column;gap:6px}
+.stack button{width:100%;text-align:left;padding:9px 11px;border:1px solid var(--rule);background:var(--paper);
+  border-radius:3px;font:inherit;font-size:13px;color:var(--ink2);cursor:pointer}
+.stack button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--panel);font-weight:500}
+.stack button:focus-visible{outline:2px solid var(--signal);outline-offset:1px}
+
+.readout{display:flex;flex-direction:column;gap:22px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:3px;box-shadow:var(--shadow);overflow:hidden}
+.panel>.ph{padding:16px 20px 0}
+.ph h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.ph p{margin:5px 0 0;font-size:13px;color:var(--ink2);max-width:64ch}
+.pb{padding:18px 20px 20px}
+
+.verdict{display:flex;align-items:flex-start;gap:22px;flex-wrap:wrap;padding:20px;
+  border:1px solid var(--signal-line);background:var(--signal-soft);border-radius:3px}
+.verdict .big{font-size:38px;line-height:1.05;font-weight:600;color:var(--signal);letter-spacing:-.02em;white-space:nowrap}
+.verdict .lbl{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--signal);opacity:.85;font-weight:600}
+.verdict p{margin:6px 0 0;font-size:14px;color:var(--ink);max-width:58ch}
+
+.mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.mcell{background:var(--panel);padding:13px 15px}
+.mcell .k{font-size:11.5px;color:var(--ink3);letter-spacing:.03em;margin-bottom:4px}
+.mcell .v{font-size:21px;font-weight:600;letter-spacing:-.01em}
+.mcell .s{font-size:11.5px;color:var(--ink3);margin-top:2px}
+.neg{color:var(--loss)} .pos{color:var(--ok)} .sig{color:var(--signal)}
+
+/* AI 해설 */
+.ai{border:1px solid var(--rule);border-radius:3px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden}
+.ai .aih{display:flex;align-items:center;gap:9px;padding:13px 20px;border-bottom:1px solid var(--rule2);flex-wrap:wrap}
+.ai .aih b{font-size:13.5px;font-weight:600}
+.ai .aih .src{font-size:11px;color:var(--ink3);margin-left:auto;letter-spacing:.02em}
+.ai dl{margin:0;padding:16px 20px 18px;display:grid;gap:13px}
+.ai dt{font-size:11.5px;letter-spacing:.05em;color:var(--ink3);font-weight:600;margin-bottom:3px}
+.ai dd{margin:0;font-size:14px;color:var(--ink);max-width:70ch}
+.ai dd b{font-weight:600}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:right;padding:9px 10px;border-bottom:1px solid var(--rule2)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:11.5px;letter-spacing:.05em;color:var(--ink3);font-weight:600;text-transform:uppercase}
+tbody tr:last-child td{border-bottom:0}
+tr.total td{border-top:1px solid var(--rule);font-weight:600}
+.tscroll{overflow-x:auto}
+
+.chart{width:100%;height:auto;display:block}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin-top:10px}
+.legend i{display:inline-block;width:16px;height:2px;vertical-align:middle;margin-right:6px}
+
+.picks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pick{font-size:12.5px;padding:5px 9px;border:1px solid var(--rule);border-radius:3px;
+  background:var(--paper);color:var(--ink2);cursor:pointer;user-select:none}
+.pick[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--panel);font-weight:500}
+.pick:focus-visible{outline:2px solid var(--signal);outline-offset:1px}
+.gname{font-size:11.5px;color:var(--ink3);letter-spacing:.04em;margin:14px 0 2px;font-weight:600}
+
+.balance{border-left:3px solid var(--base);background:var(--rule2);border-radius:0 8px 8px 0;
+  padding:13px 16px;font-size:13.5px;color:var(--ink2);max-width:74ch}
+.balance b{color:var(--ink)}
+
+/* LAB */
+.lab{display:grid;gap:20px}
+.labhead{border:1px solid var(--rule);border-left:3px solid var(--ink);border-radius:3px;
+  background:var(--panel);padding:22px;box-shadow:var(--shadow)}
+.labhead h3{margin:0 0 8px;font-size:18px;font-weight:600}
+.labhead p{margin:0 0 10px;font-size:14px;color:var(--ink2);max-width:72ch}
+.labhead .quote{font-size:15px;font-weight:600;color:var(--ink);border-top:1px solid var(--rule2);padding-top:14px;margin-top:4px}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:4px}
+.b-fail{background:var(--loss-soft);color:var(--loss)}
+.b-warn{background:var(--signal-soft);color:var(--signal)}
+.b-none{background:var(--rule2);color:var(--ink2)}
+
+/* ===== 감사 입력부 ===== */
+.intake{background:var(--panel);border:1px solid var(--rule);border-top:2px solid var(--ink);
+  padding:22px 24px 24px;margin:18px 0 0}
+.intake .ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:7px}
+.intake h1{margin:0;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.intake .en{font-size:11px;letter-spacing:.13em;color:var(--ink3);text-transform:uppercase;font-weight:600}
+.intake .lead{margin:0 0 14px;font-size:13px;color:var(--ink2);max-width:80ch;line-height:1.7}
+#claimInput{width:100%;min-height:82px;padding:12px 14px;border:1px solid var(--rule);
+  border-radius:3px;background:var(--paper);color:var(--ink);font:inherit;font-size:14.5px;resize:vertical}
+#claimInput:focus{outline:2px solid var(--signal);outline-offset:1px}
+.claimBtnRow{display:flex;align-items:center;gap:12px;margin-top:11px;flex-wrap:wrap}
+button.primary{appearance:none;border:0;border-radius:3px;padding:10px 22px;font:inherit;
+  font-weight:600;font-size:14px;background:var(--ink);color:var(--panel);cursor:pointer;letter-spacing:.01em}
+button.primary:hover{opacity:.88}
+button.primary:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.exLabel{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);
+  font-weight:600;margin:16px 0 7px}
+.claimExamples{display:flex;flex-wrap:wrap;gap:6px}
+.claimEx{font-size:12px;padding:6px 10px;border:1px solid var(--rule);border-radius:3px;
+  background:var(--paper);color:var(--ink2);cursor:pointer;text-align:left;font-family:inherit}
+.claimEx:hover{border-color:var(--ink);color:var(--ink);background:var(--panel)}
+
+/* ===== 감사 보고서 ===== */
+#audit{display:none;margin-top:20px}
+#audit.show{display:block}
+.rep{background:var(--panel);border:1px solid var(--rule);margin-bottom:16px}
+.rep>.rh{display:flex;align-items:baseline;gap:10px;padding:13px 20px;border-bottom:1px solid var(--rule);
+  background:var(--rule2);flex-wrap:wrap}
+.rep>.rh .no{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--ink3)}
+.rep>.rh h3{margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.rep>.rh .sub{font-size:11.5px;color:var(--ink3);margin-left:auto}
+.rep>.rb{padding:17px 20px 19px}
+.quoted{border-left:3px solid var(--ink3);padding:10px 14px;background:var(--rule2);
+  font-size:14px;color:var(--ink);line-height:1.65;max-width:82ch}
+.ctab{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:2px}
+.ctab th,.ctab td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--rule2);vertical-align:top}
+.ctab thead th{font-size:11px;letter-spacing:.06em;color:var(--ink3);font-weight:600;
+  text-transform:uppercase;border-bottom:1px solid var(--rule)}
+.ctab td.n{width:30px;color:var(--ink3);font-weight:600;text-align:center}
+.ctab td.st{width:96px;white-space:nowrap}
+.ctab tbody tr:last-child td{border-bottom:0}
+.ctab .why{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.6}
+.vb{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;padding:3px 8px;
+  border-radius:2px;border:1px solid transparent;white-space:nowrap}
+.v-ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}
+.v-part{background:var(--signal-soft);color:var(--signal);border-color:var(--signal-line)}
+.v-no{background:var(--loss-soft);color:var(--loss);border-color:var(--loss)}
+.v-na{background:var(--rule2);color:var(--ink2);border-color:var(--rule)}
+.src-q{display:inline-block;font-size:12px;color:var(--signal);background:var(--signal-soft);
+  border:1px solid var(--signal-line);border-radius:2px;padding:1px 6px;margin-right:6px;white-space:nowrap}
+.ambox{border:1px solid var(--signal-line);background:var(--signal-soft);padding:14px 16px;
+  margin-top:16px;font-size:13.5px;color:var(--ink);line-height:1.7}
+.ambox .amk{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--signal);
+  font-weight:700;margin-bottom:7px}
+.ambtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.ambtn{appearance:none;border:1px solid var(--ink);background:var(--panel);color:var(--ink);
+  border-radius:3px;padding:7px 13px;font:inherit;font-size:13px;cursor:pointer}
+.ambtn:hover{background:var(--ink);color:var(--panel)}
+.exbox{display:none;margin-top:16px;padding:13px 16px;border:1px solid var(--rule);
+  background:var(--rule2);font-size:12.5px;color:var(--ink2);line-height:1.65}
+.exbox.refbox{border-left:3px solid var(--ink3);background:var(--panel)}
+.exbox .exk{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);
+  font-weight:700;margin-bottom:6px}
+.exbox ul{margin:0;padding-left:17px}
+.exbox li{margin-bottom:3px}
+.exbox .exnote{margin:8px 0 0;color:var(--ink);font-size:12.5px}
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);margin-bottom:16px}
+.tally div{background:var(--panel);padding:12px 14px}
+.tally .tv{font-size:24px;font-weight:600;letter-spacing:-.02em}
+.tally .tk{font-size:11px;letter-spacing:.04em;color:var(--ink3);margin-top:2px}
+.finding{border:1px solid var(--ink);border-left:4px solid var(--signal-line);padding:15px 18px;
+  background:var(--panel)}
+.finding .fk{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);
+  font-weight:700;margin-bottom:6px}
+.finding p{margin:0;font-size:14.5px;line-height:1.7;color:var(--ink);max-width:80ch}
+.finding p+p{margin-top:9px;font-size:13.5px;color:var(--ink2)}
+.evbtn{appearance:none;background:var(--paper);border:1px solid var(--ink);color:var(--ink);
+  border-radius:3px;padding:9px 16px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-top:14px}
+.evbtn:hover{background:var(--ink);color:var(--panel)}
+.limits{font-size:12.5px;color:var(--ink2);line-height:1.75;max-width:84ch}
+.limits li{margin-bottom:5px}
+.limits ul{margin:0;padding-left:18px}
+.nomatch{border:1px solid var(--loss);border-left:4px solid var(--loss);background:var(--loss-soft);
+  padding:15px 18px;font-size:13.5px;color:var(--ink);line-height:1.7;display:none;margin-top:20px}
+.nomatch.show{display:block}
+.engineHd{appearance:none;background:none;border:0;font:inherit;font-size:11.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink3);font-weight:700;padding:20px 0 6px;cursor:pointer;display:block}
+.engineHd:hover{color:var(--ink)}
+.engineHd:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+body:not(.eng) #engineNav, body:not(.eng) main{display:none}
+footer{margin-top:34px;border-top:1px solid var(--rule);background:var(--panel)}
+.fin{padding:20px 0 34px;font-size:12.5px;color:var(--ink3);max-width:82ch}
+.fin b{color:var(--ink2)}
+.hidden{display:none !important}
+.note{font-size:12px;color:var(--ink3);margin-top:12px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>ALPHA GUARD</h1>
-        <p class="subtitle">엄정한 독립 Premise 검증 및 포트폴리오 감사 시스템</p>
-        
-        <div class="box">
-            <label for="claimInput"><strong>검증할 주장 입력</strong></label>
-            <p style="font-size: 12px; color: #94a3b8; margin: 5px 0 10px 0;">예: "삼성전자와 TQQQ를 5:5로 담으면 연평균 수익률이 20%가 넘는다"</p>
-            <textarea id="claimInput" placeholder="포트폴리오 구성 및 주장을 입력하세요..."></textarea>
-            <button onclick="runAudit()">감사 실행</button>
-            <div id="status">데이터 로딩 중...</div>
-        </div>
 
-        <div class="box result-box" id="resultArea">
-            <h3>감사 결과 보고서</h3>
-            <div id="resultContent"></div>
-        </div>
+<header>
+  <div class="wrap hd">
+    <div class="mark">알파<span>가드</span></div>
+    <div class="tag">투자 조언을 믿기 전에, 그 근거를 감사합니다.</div>
+    <div class="chips">
+      <span class="chip">수익률 예측 없음</span>
+      <span class="chip">종목 권유 없음</span>
+      <span class="chip">금융 수치에 생성형 AI 출력값 미사용</span>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="intake">
+      <div class="ttl">
+        <h1>투자 주장 감사</h1>
+        <span class="en">Investment Claim Audit</span>
+      </div>
+      <p class="lead">검토하려는 투자 의견을 붙여넣어 주십시오. 생성형 AI·유튜브·커뮤니티·메신저 등에서 받은 문장을 그대로 입력하면 됩니다.
+        알파가드는 그 문장을 <b>개별 주장 단위로 분해</b>한 뒤, 과거 시세로 확인할 수 있는 주장만
+        결정론적 엔진으로 계산해 <b>확인 · 부분 확인 · 불일치 · 검증 불가</b>로 판정합니다.
+        미래 가격에 대한 주장은 판정하지 않고 검증 불가로 분리합니다.</p>
+      <textarea id="claimInput" placeholder="예) TQQQ는 나스닥 3배니까 장기로 들고 있으면 3배 번다 / 삼성전자·SK하이닉스·한미반도체면 분산된 거 아냐? / 카카오 반토막 났는데 50% 오르면 본전"></textarea>
+      <div class="claimBtnRow">
+        <button type="button" class="primary" id="claimGo">주장 감사 실행</button>
+        <span class="note" id="claimHint">문장을 그대로 입력하시면 됩니다. 대상을 확정하지 못하면 감사 대신 확인을 요청합니다.</span>
+      </div>
+      <div class="exLabel">감사 예시 — 실제로 흔히 유통되는 투자 문장</div>
+      <div class="claimExamples" id="claimExamples"></div>
     </div>
 
-    <script>
-        let marketData = null;
+    <div class="nomatch" id="claimNoMatch"></div>
 
-        // 알파가드 v3 데이터셋 로드 (경로 변경 완료)
-        fetch('alphaguard_data_v3.json')
-            .then(res => res.json())
-            .then(data => {
-                marketData = data;
-                document.getElementById('status').innerText = `데이터 로드 완료: 총 자산 ${Object.keys(data.assets).length}종 (${data.dates[0]} ~ ${data.dates[data.dates.length-1]})`;
-            })
-            .catch(err => {
-                document.getElementById('status').innerText = '데이터 로드 실패: alphaguard_data_v3.json 파일을 확인하세요.';
-                console.error(err);
-            });
+    <section id="audit">
+      <div class="rep">
+        <div class="rh"><span class="no">§1</span><h3>감사 대상 진술</h3>
+          <span class="sub" id="auditMeta"></span></div>
+        <div class="rb"><div class="quoted" id="auditQuote"></div>
+          <div class="ambox" id="auditAmb" style="display:none"></div>
+          <div class="ambox" id="auditOut" style="display:none"></div></div>
+      </div>
 
-        function runAudit() {
-            if (!marketData) {
-                alert('데이터가 아직 로드되지 않았습니다.');
-                return;
-            }
-            const text = document.getElementById('claimInput').value;
-            const resultArea = document.getElementById('resultArea');
-            const resultContent = document.getElementById('resultContent');
-            
-            resultArea.style.display = 'block';
-            resultContent.innerHTML = `<p>입력된 주장("${text}")에 대한 독립 검증을 수행 중입니다...</p><p style="color: #38bdf8;">현재 117종의 자산 데이터베이스를 기반으로 시뮬레이션을 구동하고 있습니다.</p>`;
-        }
-    </script>
+      <div class="rep">
+        <div class="rh"><span class="no">§2</span><h3>주장 분해 및 판정</h3>
+          <span class="sub">확인 가능한 주장만 계산합니다</span></div>
+        <div class="rb">
+          <div class="tally" id="auditTally"></div>
+          <div class="tscroll"><table class="ctab" id="auditTable"></table></div>
+          <div class="exbox" id="auditExcluded"></div>
+          <div class="exbox refbox" id="auditRefs"></div>
+        </div>
+      </div>
+
+      <div class="rep">
+        <div class="rh"><span class="no">§3</span><h3>핵심 발견</h3></div>
+        <div class="rb">
+          <div class="finding" id="auditFinding"></div>
+          <button type="button" class="evbtn" id="auditEvidence">근거 계측 상세 열기 →</button>
+        </div>
+      </div>
+
+      <div class="rep">
+        <div class="rh"><span class="no">§4</span><h3>감사의 한계</h3></div>
+        <div class="rb"><div class="limits" id="auditLimits"></div></div>
+      </div>
+    </section>
+
+    <button type="button" class="engineHd" id="engineToggle" aria-expanded="false">근거 계측 엔진 직접 열기 <span id="engineSign">+</span></button>
+    <div id="engineNav">
+    <nav class="tabs" role="tablist">
+      <button id="tab-lev" role="tab" aria-selected="true" aria-controls="p-lev">레버리지 해부 <span style="color:var(--ink3);font-weight:400">· 구조 위험</span></button>
+      <button id="tab-div" role="tab" aria-selected="false" aria-controls="p-div">분산 착시 <span style="color:var(--ink3);font-weight:400">· 집중 위험</span></button>
+      <button id="tab-rec" role="tab" aria-selected="false" aria-controls="p-rec">손실 회복 <span style="color:var(--ink3);font-weight:400">· 체감 위험</span></button>
+      <button id="tab-lab" role="tab" aria-selected="false" aria-controls="p-lab">알파가드 LAB</button>
+      <button id="tab-ledger" role="tab" aria-selected="false" aria-controls="p-ledger">AI 설계 원장</button>
+    </nav>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ========== 1. 레버리지 해부 ========== -->
+<section id="p-lev" role="tabpanel" aria-labelledby="tab-lev">
+  <div class="cols">
+    <aside class="ctl">
+      <h2>계측 대상</h2>
+      <label class="fld" for="levSel">레버리지 · 인버스 상품</label>
+      <select id="levSel"></select>
+      <h2>어떤 기대로 보고 계십니까</h2>
+      <div class="stack" id="levIntent"></div>
+      <h2>계측 구간</h2>
+      <div class="seg" id="levRange">
+        <button data-y="1">1년</button>
+        <button data-y="3" aria-pressed="true">3년</button>
+        <button data-y="5">5년</button>
+        <button data-y="0">전체</button>
+      </div>
+      <p class="note" id="levWindow"></p>
+    </aside>
+
+    <div class="readout">
+      <div class="verdict">
+        <div>
+          <div class="lbl" id="levHeadLbl">연환산 격차</div>
+          <div class="big mono" id="levGap">—</div>
+        </div>
+        <p id="levVerdictText">계측 중입니다.</p>
+      </div>
+
+      <div class="ai">
+        <div class="aih"><b id="aiBelief">기대의 구조</b>
+          <span class="src">해설 자산 · 수치는 계측 엔진이 계산</span></div>
+        <dl id="aiBody"></dl>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <h3 id="levChartTitle">기초자산은 이만큼 움직였고, 상품은 이만큼 움직였습니다</h3>
+          <p id="levChartSub"></p>
+        </div>
+        <div class="pb">
+          <div class="mrow" id="levCells"></div>
+          <svg class="chart" id="levChart" viewBox="0 0 760 300" role="img" aria-label="기초자산과 상품의 누적 경로 비교"></svg>
+          <div class="legend" id="levLegend"></div>
+        </div>
+      </div>
+
+      <div class="panel" id="levDecompPanel">
+        <div class="ph">
+          <h3>격차는 어디서 생겼는가</h3>
+          <p>배수는 수익에 <b>배수만큼</b>, 변동성 손실에는 <b>배수의 제곱만큼</b> 작용합니다. 2배 상품의 변동성 손실은 2배가 아니라 4배입니다.</p>
+        </div>
+        <div class="pb tscroll">
+          <table id="levTable"></table>
+          <p class="note" id="levResidNote"></p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <h3>기초자산이 제자리로 돌아온 구간</h3>
+          <p>기초자산이 출발점 ±3% 안으로 되돌아온 가장 긴 구간을 데이터에서 찾아 그동안의 손익을 계산했습니다.</p>
+        </div>
+        <div class="pb">
+          <div class="mrow" id="levFlatCells"></div>
+          <p class="note" id="levFlatNote"></p>
+        </div>
+      </div>
+
+      <div class="balance">
+        <b>한쪽만 보지 않기 위해 함께 적습니다.</b> 강한 상승 추세가 이어진 구간에서는 배수 상품이 단순 배수보다
+        더 큰 수익을 내기도 합니다. 이 계측은 배수 상품이 불리하다는 주장이 아니라, 표방된 배수와 실제 결과가
+        어떤 조건에서 얼마나 벌어졌는지를 그대로 보여주는 것입니다. 변동성 손실은 추세가 강할 때 사라지는 것이
+        아니라 추세에 가려집니다. 계측 구간을 바꿔가며 확인해 보십시오.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 2. 분산 착시 ========== -->
+<section id="p-div" role="tabpanel" aria-labelledby="tab-div" class="hidden">
+  <div class="cols">
+    <aside class="ctl">
+      <h2>보유 종목</h2>
+      <div class="seg" id="divPresets">
+        <button data-p="chip">반도체 3종</button>
+        <button data-p="batt">2차전지 5종</button>
+        <button data-p="mixed" aria-pressed="true">골고루 8종</button>
+        <button data-p="clear">비우기</button>
+      </div>
+      <div id="divPicks"></div>
+      <h2>계측 구간</h2>
+      <div class="seg" id="divRange">
+        <button data-y="1">1년</button>
+        <button data-y="3" aria-pressed="true">3년</button>
+        <button data-y="5">5년</button>
+      </div>
+      <p class="note" id="divWindow"></p>
+    </aside>
+
+    <div class="readout">
+      <div class="verdict">
+        <div>
+          <div class="lbl">실질 독립 베팅 수</div>
+          <div class="big mono" id="divNeff">—</div>
+        </div>
+        <p id="divVerdictText">종목을 선택하십시오.</p>
+      </div>
+
+      <div class="ai">
+        <div class="aih"><b id="aiDivBelief"></b>
+          <span class="src">해설 자산 · 수치는 계측 엔진이 계산</span></div>
+        <dl id="aiDivBody"></dl>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h3>종목 수는 분산도가 아닙니다</h3>
+          <p>실질 독립 베팅 수는 수익률 상관행렬의 고윳값으로 계산합니다.</p></div>
+        <div class="pb"><div class="mrow" id="divCells"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h3>무엇과 무엇이 같이 움직였는가</h3>
+          <p>진한 칸일수록 두 종목이 같은 방향으로 함께 움직였다는 뜻입니다.</p></div>
+        <div class="pb"><svg class="chart" id="divHeat" viewBox="0 0 760 420" role="img" aria-label="선택 종목 간 상관계수 히트맵"></svg></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h3>이 조합을 들고 있었다면 견뎌야 했던 구간</h3>
+          <p>선택한 종목을 같은 금액씩 담아 계측 구간 내내 보유했다고 가정한 결과입니다. 거래비용과 세금은 반영하지 않았습니다.</p></div>
+        <div class="pb">
+          <div class="mrow" id="divPain"></div>
+          <svg class="chart" id="divChart" viewBox="0 0 760 240" role="img" aria-label="동일가중 보유 시 누적 경로"></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3. 손실 회복 ========== -->
+<section id="p-rec" role="tabpanel" aria-labelledby="tab-rec" class="hidden">
+  <div class="cols">
+    <aside class="ctl">
+      <h2>계측 대상</h2>
+      <label class="fld" for="recSel">상품 · 종목</label>
+      <select id="recSel"></select>
+      <h2>계측 구간</h2>
+      <div class="seg" id="recRange">
+        <button data-y="3">3년</button>
+        <button data-y="5">5년</button>
+        <button data-y="0" aria-pressed="true">전체</button>
+      </div>
+      <p class="note" id="recWindow"></p>
+    </aside>
+
+    <div class="readout">
+      <div class="verdict">
+        <div>
+          <div class="lbl">최대낙폭에서 원금까지 필요했던 수익률</div>
+          <div class="big mono" id="recNeed">—</div>
+        </div>
+        <p id="recVerdictText"></p>
+      </div>
+
+      <div class="ai">
+        <div class="aih"><b id="aiRecBelief"></b>
+          <span class="src">해설 자산 · 수치는 계측 엔진이 계산</span></div>
+        <dl id="aiRecBody"></dl>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h3>이 상품을 들고 있었다면</h3>
+          <p>계측 구간 내내 보유했다고 가정한 실측값입니다.</p></div>
+        <div class="pb"><div class="mrow" id="recCells"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h3>손실이 커질수록 회복은 선형이 아닙니다</h3>
+          <p>가로축은 손실률, 세로축은 원금 회복에 필요한 수익률입니다. 표시된 점이 이 상품의 실제 최대낙폭 지점입니다.</p></div>
+        <div class="pb">
+          <svg class="chart" id="recChart" viewBox="0 0 760 300" role="img" aria-label="손실률 대비 원금 회복에 필요한 수익률 곡선"></svg>
+          <div class="tscroll" style="margin-top:14px"><table id="recTable"></table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. LAB ========== -->
+<section id="p-lab" role="tabpanel" aria-labelledby="tab-lab" class="hidden">
+  <div class="lab">
+    <div class="labhead">
+      <h3>우리가 만든 투자전략도 같은 검사를 받았습니다</h3>
+      <p>알파가드를 만든 팀은 미국주식 모멘텀 전략(12-1 모멘텀, 거래대금 상위 100종목 중 20종목 동일가중)을
+         46라운드에 걸쳐 사전 등록된 6개 항목으로 검증했습니다. 판정 기준은 결과를 보기 전에 고정했고,
+         결과를 본 뒤 바꾸지 않았습니다.</p>
+      <p>아래는 그 실행 결과를 그대로 옮긴 것입니다. 우리에게 유리한 항목만 고르지 않았습니다.</p>
+      <div class="quote">그래서 알파가드는 수익률이나 방향을 예측하지 않습니다.
+        우리가 검증할 수 있는 것만 제품에 넣었습니다.</div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>사전 등록 검증 결과</h3>
+        <p>판정 기준 t ≥ 2.0. 이 기준은 검증을 시작하기 전에 문서로 고정했습니다.</p></div>
+      <div class="pb tscroll">
+        <table>
+          <thead><tr><th>검증 항목</th><th>측정값</th><th>판정</th><th>의미</th></tr></thead>
+          <tbody>
+            <tr><td>순위 예측력 (IC)</td><td class="mono">t = 1.28</td>
+              <td><span class="badge b-fail">기준 미달</span></td>
+              <td>신호 순위가 높을수록 수익이 높다는 관계를 확인하지 못함</td></tr>
+            <tr><td>상위 5종목 초과수익</td><td class="mono">t = 3.17</td>
+              <td><span class="badge b-warn">기준 충족</span></td>
+              <td>극단 상위 구간에서는 초과수익이 관측됨</td></tr>
+            <tr><td>테마 요인 통제 후 알파</td><td class="mono">t = 0.64</td>
+              <td><span class="badge b-fail">기준 미달</span></td>
+              <td>지수·반도체·모멘텀 요인을 통제하면 남는 초과수익을 확인하지 못함</td></tr>
+            <tr><td>요인 설명력</td><td class="mono">R² = 0.887</td>
+              <td><span class="badge b-none">참고</span></td>
+              <td>QQQ·반도체·모멘텀 3개 변수를 넣은 회귀모형에서 전략 수익률 변동의 상당 부분이 설명됨</td></tr>
+            <tr><td>실질 독립 베팅 수</td><td class="mono">20종목 → 2.54</td>
+              <td><span class="badge b-warn">집중</span></td>
+              <td>명목 20종목이지만 상호상관 0.55로 실질 분산은 낮음</td></tr>
+            <tr><td>생존편향</td><td class="mono">폐지 종목 0 / 494</td>
+              <td><span class="badge b-fail">존재 확인</span></td>
+              <td>유니버스가 현재 생존 종목만으로 구성됨을 확인. 다만 편향의 <b>크기는 측정되지 않음</b></td></tr>
+            <tr><td>미관측 구간 검증</td><td class="mono">관측 0일</td>
+              <td><span class="badge b-none">미실시</span></td>
+              <td>연구 시작 이후 새로 발생한 기간에 대한 검증은 아직 수행되지 않음</td></tr>
+          </tbody>
+        </table>
+        <p class="note">표현에 관하여 · 위 결과는 <b>“이 전략이 미래에 실패한다”</b>는 주장이 아니라
+          <b>“설정한 검증 절차에서 통계적 유의성을 확보하지 못했다”</b>는 관측입니다. 두 문장은 다릅니다.
+          R² 역시 “수익의 88.7%가 시장 때문”이라는 뜻이 아니라, 해당 회귀모형에서 설명변수들이
+          종속변수 변동의 높은 비율을 설명했다는 뜻입니다.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>이 경험이 서비스 설계에 남긴 것</h3></div>
+      <div class="pb tscroll">
+        <table>
+          <thead><tr><th>검증에서 배운 것</th><th>알파가드에 반영된 설계</th></tr></thead>
+          <tbody>
+            <tr><td>통계적으로 확인되지 않은 것을 확인된 것처럼 표시하면 안 된다</td>
+                <td>모든 수치를 과거 관측값으로만 표시하고, 미래 표현을 쓰지 않음</td></tr>
+            <tr><td>같은 결론도 계측 구간을 바꾸면 달라질 수 있다</td>
+                <td>모든 화면에 계측 창의 시작일·종료일과 관측 일수를 함께 표시</td></tr>
+            <tr><td>명목 종목 수는 분산도가 아니다</td>
+                <td>실질 독립 베팅 수를 별도 렌즈로 제공</td></tr>
+            <tr><td>설명 문구가 실제 계산값과 어긋나면 그 순간 거짓이 된다</td>
+                <td>화면 문구를 실행 시점 계산값으로 생성. AI 해설은 숫자를 만들지 않음</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== 5. AI 설계 원장 ========== -->
+<section id="p-ledger" role="tabpanel" aria-labelledby="tab-ledger" class="hidden">
+  <div class="lab">
+    <div class="labhead">
+      <h3>생성형 AI가 무엇을 만들었고, 무엇이 반려되었는가</h3>
+      <p>"AI를 활용했다"는 주장은 검증 대상이어야 한다는 것이 이 서비스의 전제입니다. 그래서 자체 서비스에도 같은
+         기준을 적용해, 생성형 AI가 실제로 만든 산출물과 검수에서 반려된 항목을 그대로 공개합니다.</p>
+      <div class="quote">알파가드는 다른 사람의 주장을 감사합니다. 그렇다면 알파가드 자신의 "AI를 썼다"는 주장도
+        감사 가능한 형태로 제시되어야 합니다.</div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>설계 시점 — 생성형 AI가 만든 것</h3>
+        <p>아래 산출물은 모두 배포 전 사람이 검수했고, 검수 결과를 함께 표기했습니다.</p></div>
+      <div class="pb tscroll">
+        <table>
+          <thead><tr><th>산출물</th><th>수량</th><th>생성 방식</th><th>검수 결과</th></tr></thead>
+          <tbody>
+            <tr><td>주장 유형 분류 체계</td><td class="mono">4종</td>
+                <td>투자 문장에서 반복 등장하는 진술을 수집해 배수 · 분산 · 손실회복 · 미래예측으로 유형화</td>
+                <td><span class="badge b-warn">채택</span></td></tr>
+            <tr><td>판정 등급 체계</td><td class="mono">5단계</td>
+                <td>참·거짓 이분법의 위험을 피하기 위해 확인 / 부분 확인 / 불일치 / 검증 불가 / 데이터 부족으로 설계</td>
+                <td><span class="badge b-warn">채택</span></td></tr>
+            <tr><td>구어·은어 별칭 사전</td><td class="mono"><span id="ledAlias">–</span></td>
+                <td>"곱버스", "삼전", "한전" 등 정식 명칭과 다르게 유통되는 표현. 대상이 하나로 확정되는 것만 담고,
+                    둘 이상일 수 있는 표현(<span id="ledAmb">–</span>)은 확정하지 않고 이용자에게 되묻습니다</td>
+                <td><span class="badge b-warn">채택 (1건 반려)</span></td></tr>
+            <tr><td>주장 유형 · 문장 근거 판별 표현</td><td class="mono"><span id="ledKw">–</span></td>
+                <td>미래예측 판별 · 문장 내 진술 근거 판별 · 주장 유형 분류 · 한글 수사.
+                    이 수치는 배포된 파일의 배열 길이를 화면에서 직접 세어 표시한 값입니다(<span id="ledKwBreak">–</span>)</td>
+                <td><span class="badge b-warn">채택</span></td></tr>
+            <tr><td>유형별 해설 문장</td><td class="mono">9개</td>
+                <td>기대와 상품 구조가 어긋나는 지점을 설명하는 문장. 실측값과 대조 검수 후 포함</td>
+                <td><span class="badge b-warn">채택</span></td></tr>
+          </tbody>
+        </table>
+        <p class="note">경계 표시 · 화면에서 종목·상품을 인식하는 항목은 총 <span id="ledTotal">–</span>이지만,
+          이 중 <span id="ledAuto">–</span>는 데이터셋의 키값(종목명·티커)에서 자동 생성되는 것이며 생성형 AI가 만든 사전이 아닙니다.
+          AI 기여분은 위 표의 5개 항목입니다.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>검수에서 반려된 항목</h3>
+        <p>생성형 AI의 산출물을 그대로 쓰지 않았다는 사실은 반려 기록으로만 증명됩니다.</p></div>
+      <div class="pb tscroll">
+        <table>
+          <thead><tr><th>반려 항목</th><th>구분</th><th>반려 사유</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">"será"</td><td>별칭 사전</td>
+                <td>미래형 표현 사전에 스페인어가 포함됨. 한국어 입력에서 매칭될 수 없는 항목으로,
+                    코드 검수 과정에서 발견해 제거 <span class="badge b-fail">제거됨</span></td></tr>
+            <tr><td class="mono">N_eff ≈ 2.81</td><td>계측값</td>
+                <td>협업한 다른 생성형 AI가 특정 8종목 조합에 대해 제시한 값. 동일 데이터로 재현했을 때
+                    4.41~4.68이 나와 불일치. 재현 실패로 문서와 서비스에서 모두 배제
+                    <span class="badge b-fail">배제됨</span></td></tr>
+            <tr><td>단일 구간 판정</td><td>판정 설계</td>
+                <td>하나의 계측 창만으로 "불일치"를 판정하는 초기 설계. 구간에 따라 편차의 부호가
+                    바뀌는 사례를 확인해 폐기하고, 사전 고정 3개 창 동시 산출로 대체
+                    <span class="badge b-fail">폐기됨</span></td></tr>
+            <tr><td>주장 자동 생성</td><td>판정 설계</td>
+                <td>종목을 인식하면 그 종목 유형에 해당하는 주장을 자동 생성해 판정하던 초기 구현.
+                    이용자가 하지 않은 주장을 판정하게 되므로 폐기하고, 문장에 근거가 있는 주장만
+                    감사하도록 수정 <span class="badge b-fail">폐기됨</span></td></tr>
+            <tr><td>수익률 예측 기능</td><td>기능</td>
+                <td>기획 초기에 검토했던 종목 추천·수익률 예측 기능. 투자자문업·유사투자자문업
+                    해당 가능성과 서비스 철학 충돌로 채택하지 않음 <span class="badge b-fail">미채택</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>AI가 관여하지 않는 영역</h3></div>
+      <div class="pb tscroll">
+        <table>
+          <thead><tr><th>영역</th><th>처리 주체</th><th>이유</th></tr></thead>
+          <tbody>
+            <tr><td>수익률 · 경로효과 · 상관행렬 · 낙폭 · 회복 필요수익률</td>
+                <td>결정론적 계측 엔진 (브라우저)</td>
+                <td>동일 입력에 동일 출력이 보장되어야 하는 값. 생성형 모델의 추론 결과에 의존하면 재현성이 무너짐</td></tr>
+            <tr><td>판정 등급 부여</td><td>사전 고정된 규칙</td>
+                <td>판정 임계값을 결과를 본 뒤 조정하면 그 자체가 결론을 만드는 행위가 됨</td></tr>
+            <tr><td>계측 구간 선택</td><td>사전 고정 (전체 · 5년 · 3년)</td>
+                <td>구간 선택이 결론의 부호까지 바꿀 수 있음이 실측으로 확인됨</td></tr>
+            <tr><td>미래 가격 · 수익률</td><td>산출하지 않음</td>
+                <td>과거 데이터로 판정할 수 없는 대상. 검증 불가로 분리</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap"><div class="fin">
+    <b>서비스 성격 고지</b> · 본 서비스는 특정 금융상품의 매수·매도 또는 투자판단을 권유하지 않으며 장래의
+    가격이나 수익률을 예측하지 않습니다. 공개된 과거 시세 데이터를 기반으로 금융상품의 구조적 특성과 과거
+    위험지표를 계산하여 설명하는 정보 제공형 서비스로 설계되었습니다. 과거의 계측값은 미래의 성과를 보장하지
+    않으며, 투자 판단과 그 결과에 대한 책임은 이용자 본인에게 있습니다.<br><br>
+    <b>데이터 및 산출 방식</b> · <span id="dataNote"></span>
+    상관계수와 실질 독립 베팅 수는 일간 수익률 기준으로 계산했습니다. 거래비용·세금·유동성 제약은
+    별도 표기가 없는 한 반영하지 않았습니다.<br><br>
+    <b>해설 문장의 생성</b> · 화면의 설명 문장은 생성형 AI로 사전 생성한 뒤 실측값과 대조 검수하여 포함했습니다.
+    모든 수치는 이용자의 브라우저에서 결정론적으로 계산되며, AI가 수치를 생성하거나 변형하지 않습니다.<br><br>
+    <b>주장 인식 방식</b> · 붙여넣은 문장은 띄어쓰기를 무시한 문자열 대조와 정규식으로 종목·상품과
+    주장 유형을 인식하며, 각 주장에는 그 근거가 된 원문 구절을 함께 표시합니다. 실행 시점에 외부 AI를
+    호출하지 않으므로 수치나 해설이 실행 중 왜곡될 경로가 없습니다. 여러 상품으로 읽힐 수 있는 표현은
+    임의로 확정하지 않고 이용자에게 확인을 요청하며, 데이터 범위 밖 종목은 다른 종목으로 대체 해석하지
+    않고 범위 밖임을 명시합니다. 등록되지 않은 표현은 인식하지 못할 수 있습니다.<br><br>
+    <b>배포 방식</b> · 이 문서는 데이터와 스크립트를 모두 포함한 단일 HTML 파일이며 외부 스크립트·API·웹폰트를
+    호출하지 않습니다. 다만 페이지 자체는 호스팅 서버에서 내려받으므로, 그 접속 기록은 호스팅 사업자 정책을
+    따릅니다. 계측은 내려받은 정적 데이터 스냅샷을 기준으로 브라우저에서 수행됩니다.
+  </div></div>
+</footer>
+
+<script>
+/* ==========================================================================
+   ALPHA GUARD - 해설 자산 (AI 사전 생성 + 실측 대조 검수)
+
+   설계 원칙: 생성형 AI는 '숫자'를 만들지 않는다.
+   - 숫자는 전부 결정론적 계측 엔진이 브라우저에서 계산한다.
+   - AI는 사용자가 가진 '기대의 구조'를 유형화하고, 그 기대가 상품 구조의
+     어디에서 어긋나는지를 설명하는 문장만 담당한다.
+   - 그 문장은 사전에 생성해 실측값과 대조 검수한 뒤 동봉한다.
+     실행 시점에 생성하지 않으므로 금융 고지에서 환각이 발생할 수 없다.
+   ========================================================================== */
+
+const INTENTS = [
+  {id:"trend",  label:"상승장에서 더 빨리 벌려고",     for:["lev_long"]},
+  {id:"hold",   label:"장기로 묻어두려고",             for:["lev_long","lev_short"]},
+  {id:"bet",    label:"하락에 베팅하려고",             for:["lev_short"]},
+  {id:"hedge",  label:"보유 주식을 방어하려고",         for:["lev_short"]},
+  {id:"recover",label:"손실을 빨리 만회하려고",         for:["lev_long","lev_short"]}
+];
+
+const EXPLAIN = {
+  /* ---------- 정방향 레버리지 ---------- */
+  "lev_long/trend":{
+    belief:"기초자산이 오르면 배수만큼 더 빨리 번다.",
+    mechanism:"이 상품이 맞추는 것은 <b>누적 수익의 배수</b>가 아니라 <b>하루 수익의 배수</b>입니다. 매일 장 마감마다 노출을 배수에 다시 맞추기 때문에, 하루가 쌓이면 결과는 단순 곱셈에서 벗어납니다.",
+    gap:"이 재조정은 오른 다음 날에는 더 큰 금액으로, 내린 다음 날에는 더 작은 금액으로 베팅하게 만듭니다. 한 방향으로 꾸준히 가면 이게 유리하게, 오르내림이 반복되면 불리하게 작동합니다.",
+    watch:"아래 <b>연환산 격차</b>와 <b>제자리 구간</b> 두 숫자를 보십시오. 추세가 강한 구간에서는 격차가 작거나 오히려 유리하게 나타나기도 합니다. 그건 변동성 손실이 사라진 것이 아니라 추세에 가려진 것입니다."
+  },
+  "lev_long/hold":{
+    belief:"좋은 지수니까 배수 상품으로 오래 들고 있으면 더 크게 번다.",
+    mechanism:"보유 기간이 길어질수록 하루 단위 재조정의 누적 효과가 커집니다. 이 상품은 장기 보유를 전제로 설계된 구조가 아니라, 하루 단위 배수를 맞추도록 설계된 구조입니다.",
+    gap:"기간이 길수록 변동성 손실이 쌓이고, 여기에 운용보수와 선물 롤비용이 매년 더해집니다. 아래 분해표의 <b>잔차</b> 항목이 그 몫입니다.",
+    watch:"<b>연환산 격차</b>를 보십시오. 이 값이 매년 반복적으로 발생한다고 보면 장기 보유 시 무엇이 쌓이는지 알 수 있습니다."
+  },
+  "lev_long/recover":{
+    belief:"손실이 났으니 배수 상품으로 빨리 회복한다.",
+    mechanism:"배수는 회복 속도만 키우는 것이 아니라 추가 손실 속도도 같이 키웁니다. 그리고 손실은 회복보다 구조적으로 불리합니다.",
+    gap:"−50%가 되면 원금 회복에 +100%가 필요합니다. 배수 상품은 −50%에 도달하는 속도가 빠르므로, 회복에 필요한 수익률 구간에 더 빨리 진입합니다.",
+    watch:"세 번째 탭 <b>손실 회복</b>에서 이 상품의 실제 최대낙폭과 회복에 필요했던 수익률을 확인하십시오."
+  },
+  /* ---------- 인버스 ---------- */
+  "lev_short/bet":{
+    belief:"떨어질 것 같으니 인버스로 반대 방향에 베팅한다.",
+    mechanism:"인버스 상품의 손익은 <b>비대칭</b>입니다. 기초자산은 이론상 상승폭에 한계가 없지만, 이 상품의 손실은 −100%가 하한이고 거기에 수렴할 수 있습니다.",
+    gap:"방향을 맞히는 문제와 별개로, 기초자산이 장기적으로 상승하는 구간에서는 인버스의 누적 손실이 회복 불가능한 영역으로 들어갑니다.",
+    watch:"아래 <b>누적 결과</b>와 <b>원금 회복에 필요한 수익률</b>을 보십시오. 이 값이 수백~수천 퍼센트라면 그 손실은 사실상 되돌릴 수 없습니다."
+  },
+  "lev_short/hedge":{
+    belief:"보유 주식이 떨어질 때를 대비해 인버스로 방어한다.",
+    mechanism:"방어 목적이라면 보유 기간이 짧아야 구조가 맞습니다. 인버스는 매일 재조정되므로, 오래 들고 있으면 방어 수단이 아니라 그 자체로 손실이 쌓이는 포지션이 됩니다.",
+    gap:"기초자산이 오르내림을 반복하면 인버스는 방향과 무관하게 가치를 잃습니다. 방어에 성공해도 방어 비용이 계속 나가는 구조입니다.",
+    watch:"아래 <b>제자리 구간</b>을 보십시오. 기초자산이 출발점으로 돌아온 구간에서 이 상품이 얼마를 잃었는지가 방어 비용의 실측치입니다."
+  },
+  "lev_short/hold":{
+    belief:"언젠가는 떨어질 테니 인버스를 들고 기다린다.",
+    mechanism:"기다리는 동안 두 가지가 동시에 진행됩니다. 기초자산이 오르면 손실이 나고, 오르내림이 반복돼도 재조정 때문에 가치가 줄어듭니다.",
+    gap:"손실이 −90%를 넘으면 이후 방향을 맞혀도 원금 회복은 사실상 불가능합니다. 남은 원금이 10%면 열 배가 올라야 본전입니다.",
+    watch:"아래 <b>원금 회복에 필요한 수익률</b>이 그 지점을 보여줍니다."
+  },
+  "lev_short/recover":{
+    belief:"손실이 났으니 인버스로 반대 방향을 잡아 만회한다.",
+    mechanism:"손실 회복을 위해 손실 상한이 −100%로 정해진 상품에 들어가는 것은, 회복 가능성과 회복 불가능성을 동시에 키우는 선택입니다.",
+    gap:"방향이 맞으면 빠르게 회복되지만, 틀리면 회복에 필요한 수익률이 기하급수적으로 커집니다. 이 비대칭은 방향 예측 실력과 무관하게 산술적으로 발생합니다.",
+    watch:"세 번째 탭 <b>손실 회복</b>에서 손실률별로 필요한 수익률 곡선을 확인하십시오."
+  }
+};
+
+/* 분산 착시 탭 해설 */
+const EXPLAIN_DIV = {
+  belief:"여러 종목에 나눠 담았으니 분산되어 있다.",
+  mechanism:"분산의 크기는 <b>종목의 개수</b>가 아니라 <b>서로 다르게 움직이는 정도</b>로 결정됩니다. 같이 오르고 같이 내리는 종목을 여러 개 담으면, 개수는 늘어나도 베팅은 하나에 가깝습니다.",
+  gap:"실질 독립 베팅 수는 수익률 상관행렬의 고윳값으로 계산합니다. 같은 산업, 같은 공급망, 같은 테마에 속한 종목들은 상관이 높아 이 값이 급격히 낮아집니다.",
+  watch:"아래 <b>실질 독립 베팅 수</b>와 히트맵을 함께 보십시오. 종목 수 대비 비율이 낮을수록, 분산이라고 생각한 것이 실제로는 한 방향 집중이었다는 뜻입니다."
+};
+
+/* 손실 회복 탭 해설 */
+const EXPLAIN_REC = {
+  belief:"20% 잃었으니 20% 오르면 본전이다.",
+  mechanism:"손실과 회복은 계산의 기준 금액이 다릅니다. 100만원에서 20%를 잃으면 80만원이고, 80만원이 100만원이 되려면 25%가 올라야 합니다.",
+  gap:"이 격차는 손실이 커질수록 급격히 벌어집니다. −50%는 +100%, −80%는 +400%, −90%는 +900%가 필요합니다. 손실은 선형이지만 회복은 그렇지 않습니다.",
+  watch:"아래 곡선에서 선택한 상품의 실제 최대낙폭 위치를 확인하십시오. 그 지점에서 원금까지 필요한 수익률이 이 상품을 들고 있었을 때 실제로 요구됐던 값입니다."
+};
+
+</script>
+<script>
+"use strict";
+const F={
+  pct:(x,d=2)=>(x==null||!isFinite(x))?"—":(x*100).toFixed(d)+"%",
+  pp:(x,d=1)=>(x==null||!isFinite(x))?"—":(x>=0?"+":"")+(x*100).toFixed(d)+"%p",
+  sgn:(x,d=1)=>(x==null||!isFinite(x))?"—":(x>=0?"+":"")+(x*100).toFixed(d)+"%",
+  big:x=>{if(x==null||!isFinite(x))return"—";const p=x*100;
+    return p>=100000?"+"+Math.round(p).toLocaleString()+"%":(p>=0?"+":"")+p.toFixed(p>=1000?0:1)+"%";}
+};
+const ANN=252;
+let DATES=[],A={};
+
+/* ---------- 통계 ---------- */
+const mean=a=>a.reduce((s,x)=>s+x,0)/(a.length||1);
+function sd(a){const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/Math.max(a.length-1,1));}
+function corr(a,b){const ma=mean(a),mb=mean(b);let n=0,da=0,db=0;
+  for(let i=0;i<a.length;i++){n+=(a[i]-ma)*(b[i]-mb);da+=(a[i]-ma)**2;db+=(b[i]-mb)**2;}
+  const d=Math.sqrt(da*db);return d>0?n/d:0;}
+function retsOf(px,i0,i1){const r=[];let p=null,pi=-2;
+  for(let i=i0;i<=i1;i++){const v=px[i];if(v==null||!isFinite(v))continue;
+    if(p!=null&&i===pi+1)r.push(v/p-1);p=v;pi=i;}return r;}
+function spanOf(px,i0,i1){let f=null,l=null,fi=-1,li=-1,n=0;
+  for(let i=i0;i<=i1;i++){const v=px[i];if(v==null||!isFinite(v))continue;
+    if(f==null){f=v;fi=i;}l=v;li=i;n++;}
+  return f==null?null:{first:f,last:l,fi,li,n,total:l/f-1,years:(li-fi+1)/ANN};}
+/* 기초자산과 상품이 ★둘 다 관측된★ 날만 쓴다. 상장일이 다르면 구간도 다르다. */
+function commonIdx(pa,pb,i0,i1){const out=[];
+  for(let i=i0;i<=i1;i++){const x=pa[i],y=pb[i];
+    if(x!=null&&y!=null&&isFinite(x)&&isFinite(y)&&x>0&&y>0)out.push(i);}
+  return out;}
+/* 일별 배수 복리 반사실: 상품이 매일 배수를 정확히 맞췄다면 어떤 경로였는가.
+   변동성 손실을 근사식이 아니라 실제 일별 데이터로 그대로 계산한다. */
+function dailyLevPath(pb,idx,L){const out=[1];let c=1,dead=false;
+  for(let k=1;k<idx.length;k++){
+    if(!dead){const r=pb[idx[k]]/pb[idx[k-1]]-1;c*=(1+L*r);if(c<=1e-9){c=1e-9;dead=true;}}
+    out.push(c);}
+  return out;}
+function cagrOf(s){return (s&&s.years>0&&s.total>-1)?Math.pow(1+s.total,1/s.years)-1:null;}
+function ddOf(px,i0,i1){let peak=-Infinity,mdd=0,run=0,worst=0,at=-1;
+  for(let i=i0;i<=i1;i++){const v=px[i];if(v==null||!isFinite(v))continue;
+    if(v>peak){peak=v;run=0;}else{run++;if(run>worst)worst=run;}
+    const d=v/peak-1;if(d<mdd){mdd=d;at=i;}}
+  return {mdd,under:worst,at};}
+function worst12(px,i0,i1){const pts=[];
+  for(let i=i0;i<=i1;i++){const v=px[i];if(v!=null&&isFinite(v))pts.push(v);}
+  if(pts.length<=ANN)return null;let w=Infinity;
+  for(let i=ANN;i<pts.length;i++)w=Math.min(w,pts[i]/pts[i-ANN]-1);return w;}
+const needFor=dd=>dd<=-1?Infinity:1/(1+dd)-1;
+function rangeIdx(y){const i1=DATES.length-1;return y?{i0:Math.max(0,i1-Math.round(y*ANN)),i1}:{i0:0,i1};}
+
+/* ---------- SVG ---------- */
+const NS="http://www.w3.org/2000/svg";
+function el(t,at){const e=document.createElementNS(NS,t);for(const k in at)e.setAttribute(k,at[k]);return e;}
+function css(v){return getComputedStyle(document.body).getPropertyValue(v).trim();}
+function niceStep(r){const m=Math.pow(10,Math.floor(Math.log10(r||1)));
+  return [1,2,2.5,5,10].map(x=>x*m).find(s=>s>=r)||10*m;}
+function lineChart(svg,series,labels,W,H,fmt){
+  svg.textContent="";const P={t:14,r:66,b:26,l:8};
+  const all=series.flatMap(s=>s.v).filter(isFinite);if(!all.length)return;
+  let lo=Math.min(...all),hi=Math.max(...all);
+  const pad=(hi-lo)*.1||.05;lo-=pad;hi+=pad;
+  const step=niceStep((hi-lo)/4);
+  lo=Math.floor(lo/step)*step;hi=Math.ceil(hi/step)*step;
+  const n=Math.max(...series.map(s=>s.v.length));
+  const X=i=>P.l+(i/(n-1||1))*(W-P.l-P.r), Y=v=>P.t+(1-(v-lo)/(hi-lo||1))*(H-P.t-P.b);
+  const dec=step<0.05?1:0;
+  for(let v=lo;v<=hi+1e-9;v+=step){const y=Y(v);
+    svg.appendChild(el("line",{x1:P.l,x2:W-P.r,y1:y,y2:y,stroke:css("--rule2"),"stroke-width":1}));
+    const t=el("text",{x:W-P.r+8,y:y+4,fill:css("--ink3"),"font-size":11});
+    t.setAttribute("font-family","ui-monospace, monospace");
+    t.textContent=(fmt?fmt(v):((v-1)*100).toFixed(dec)+"%");svg.appendChild(t);}
+  if(lo<1&&hi>1)svg.appendChild(el("line",{x1:P.l,x2:W-P.r,y1:Y(1),y2:Y(1),
+    stroke:css("--rule"),"stroke-width":1,"stroke-dasharray":"2 3"}));
+  for(const s of series){let d="";
+    s.v.forEach((v,i)=>{if(!isFinite(v))return;d+=(d?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1);});
+    const p=el("path",{d,fill:"none",stroke:css(s.color),"stroke-width":s.w||2,
+      "stroke-linejoin":"round","stroke-linecap":"round"});
+    if(s.dash)p.setAttribute("stroke-dasharray",s.dash);svg.appendChild(p);
+    const L=s.v.length-1;
+    if(isFinite(s.v[L]))svg.appendChild(el("circle",{cx:X(L),cy:Y(s.v[L]),r:3,fill:css(s.color)}));}
+  if(labels&&labels.length)[[0,P.l,"start"],[n-1,W-P.r,"end"]].forEach(([i,x,anc])=>{
+    const t=el("text",{x,y:H-8,fill:css("--ink3"),"font-size":11,"text-anchor":anc});
+    t.setAttribute("font-family","ui-monospace, monospace");t.textContent=labels[i]||"";svg.appendChild(t);});
+}
+const cellHTML=rows=>rows.map(([k,v,s,c])=>
+  `<div class="mcell"><div class="k">${k}</div><div class="v mono ${c||""}">${v}</div><div class="s">${s||""}</div></div>`).join("");
+function renderAI(beliefEl,bodyEl,x){
+  beliefEl.textContent="“"+x.belief+"”";
+  bodyEl.innerHTML=`<div><dt>실제 구조</dt><dd>${x.mechanism}</dd></div>
+    <div><dt>여기서 간극이 생깁니다</dt><dd>${x.gap}</dd></div>
+    <div><dt>확인하실 숫자</dt><dd>${x.watch}</dd></div>`;
+}
+
+/* ---------- 탭 ---------- */
+const TABS=[["tab-lev","p-lev",()=>renderLev()],["tab-div","p-div",()=>renderDiv()],
+            ["tab-rec","p-rec",()=>renderRec()],["tab-lab","p-lab",()=>{}],
+            ["tab-ledger","p-ledger",()=>{}]];
+function activateTab(tabId){
+  const rec=TABS.find(([t])=>t===tabId);if(!rec)return;
+  TABS.forEach(([t,p])=>{const on=t===tabId;
+    document.getElementById(t).setAttribute("aria-selected",on?"true":"false");
+    document.getElementById(p).classList.toggle("hidden",!on);});
+  rec[2]();
+}
+TABS.forEach(([tb])=>document.getElementById(tb).addEventListener("click",()=>activateTab(tb)));
+
+/* ================= 0. 주장 확인 (Claim Check) =================
+   런타임 LLM을 쓰지 않는다. 종목명/티커/배수 표현을 사전 정의된 사전과
+   정규식으로 인식해, 이미 검증된 3개 렌즈 엔진 중 맞는 곳으로 라우팅만 한다.
+   AI가 숫자를 만들 수 있는 경로 자체가 없다는 설계 원칙을 이 단계에도 그대로 지킨다. */
+/* ---------- 표현 정규화 ----------
+   "오를것이다"와 "오를 것이다"는 같은 말이다. 한국어 입력의 띄어쓰기는 사람마다 다르므로
+   매칭은 공백을 제거한 문자열에서 수행하고, 화면에 인용할 때는 원문의 표기를 그대로 쓴다. */
+const nsp = t => (t||"").replace(/\s+/g,"");
+/* 조사 자동 선택 — 종목명이 늘어나면서 "삼성전자은(는)" 같은 표기가 화면에 남지 않도록,
+   마지막 글자의 받침(영문·숫자 포함)을 보고 조사를 고른다. 보고서의 기본 품질에 해당한다. */
+function jo(word,a,b){
+  // 괄호·기호로 끝나는 상품명("… QQQ (3X)")은 마지막 글자/숫자까지 잘라내고 판단한다
+  const w=(word||"").replace(/[^0-9A-Za-z가-힣]+$/,"").trim();
+  if(!w) return a;
+  const c=w[w.length-1], code=c.charCodeAt(0);
+  if(code>=0xAC00&&code<=0xD7A3) return ((code-0xAC00)%28)!==0 ? a : b;   // 한글: 종성 유무
+  if(/[0-9]/.test(c)) return "013678".includes(c) ? a : b;               // 영·일·삼·육·칠·팔에 받침
+  if(/[a-zA-Z]/.test(c)) return "LMNRlmnr".includes(c) ? a : b;          // 엘·엠·엔·알에 받침
+  return a;
+}
+const eun=w=>jo(w,"은","는"), eul=w=>jo(w,"을","를"), ega=w=>jo(w,"이","가");
+/* "두 배", "세배"처럼 한글 수사로 쓴 배수도 숫자와 동일하게 인식한다 */
+const KNUM={"한":1,"두":2,"세":3,"네":4,"다섯":5,"여섯":6,"열":10,"반":0.5};
+function statedMultOf(text){
+  const T=nsp(text);
+  const d=T.match(/(\d+(?:\.\d+)?)배/); if(d)return parseFloat(d[1]);
+  for(const [k,v] of Object.entries(KNUM)) if(T.includes(k+"배"))return v;
+  return null;
+}
+function multSpan(text){
+  const d=text.match(/\d+(?:\.\d+)?\s*배/); if(d)return d[0];
+  for(const k of Object.keys(KNUM)){const sp=findSpan(text,k+"배"); if(sp)return sp;}
+  return null;
+}
+/* 원문에서 해당 표현이 실제로 등장한 구간을 (띄어쓰기 무시하고) 찾아 원문 표기 그대로 돌려준다.
+   감사 결과에 "근거 구절"을 원문 그대로 인용하기 위한 함수다. */
+function findSpan(text,phrase){
+  const chars=nsp(phrase).split("").map(c=>c.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+  if(!chars.length)return null;
+  try{const m=new RegExp(chars.join("\\s*"),"i").exec(text);return m?m[0]:null;}catch(e){return null;}
+}
+const hitSpan=(text,arr)=>{for(const k of arr){const sp=findSpan(text,k);if(sp)return sp;}return null;};
+
+/* ---------- 자산 인식 사전 ----------
+   확정 별칭: 다른 상품으로 읽힐 여지가 없는 표현.
+   모호 별칭: 여러 상품에 해당할 수 있어 이용자 확인이 필요한 표현. 임의로 하나를 고르지 않는다. */
+const ALIAS_LIST=[
+  ["코스닥150레버리지","233740.KS"],["코스닥레버리지","233740.KS"],
+  ["곱버스","252670.KS"],["인버스2X","252670.KS"],
+  ["삼전","005930.KS"],["삼성전자우","005930.KS"],
+  ["하이닉스","000660.KS"],["네이버","035420.KS"],["엘지엔솔","373220.KS"],["엘지화학","051910.KS"],
+  ["에코프로BM","247540.KQ"],["포스코홀딩스","005490.KS"],["한화에어로","012450.KS"],
+  ["두산에너빌","034020.KS"],["현대차우","005380.KS"],
+  ["필라델피아반도체","SOXX"],["반도체지수","SOXX"],["테슬라","TSLA"],
+  ["코스피200","069500.KS"],["코스닥150","229200.KS"],["에센피","SPY"],["S&P500","SPY"],
+  /* v3 데이터(국내 대표주 확대)에 맞춰 구어체 호칭을 추가한다.
+     여기 실린 표현은 모두 대상이 하나로 확정되는 것만 담는다(둘 이상이면 아래 모호 표현으로 보낸다). */
+  ["현대자동차","005380.KS"],["기아차","000270.KS"],["포스코","005490.KS"],
+  ["삼바","207940.KS"],["삼성바이오","207940.KS"],["엘지전자","066570.KS"],
+  ["엘지유플러스","032640.KS"],["엘지유플","032640.KS"],["에스케이텔레콤","017670.KS"],
+  ["에스케이하이닉스","000660.KS"],["에스케이이노베이션","096770.KS"],
+  ["한전","015760.KS"],["한국전력공사","015760.KS"],["두산에너빌리티","034020.KS"],
+  ["한화에어로스페이스","012450.KS"],["현대일렉트릭","267260.KS"],
+  ["JYP","035900.KQ"],["와이지","122870.KQ"],["YG엔터","122870.KQ"],
+  ["SM엔터","041510.KQ"],["에스엠엔터","041510.KQ"],["씨제이이엔엠","035760.KQ"],
+  ["한국타이어","161390.KS"],["아모레","090430.KS"],["에스오일","010950.KS"],
+  ["한국조선해양","009540.KS"],["현대일렉","267260.KS"],["포스코퓨처엠","003670.KS"],
+  ["엔비디아","NVDA"],["애플","AAPL"],["마이크로소프트","MSFT"],
+  ["나스닥100","QQQ"],["미국테크TOP10","381170.KS"],["테크탑텐","381170.KS"],
+  ["코스피","^KS11"],["코스닥","^KQ11"]
+];
+const AMBIGUOUS={
+  "레버리지":["122630.KS","123320.KS","233740.KS"],
+  "인버스":["114800.KS","252670.KS","251340.KS"],
+  "나스닥":["QQQ","133690.KS","TQQQ"],
+  "반도체":["SOXX","SOXL","042700.KS"]
+};
+/* 데이터 범위 밖이지만 자주 언급되는 종목 — 인식은 하되 추측하지 않고 범위 밖임을 명시한다.
+   (엉뚱한 종목으로 대체 해석하는 것이 침묵보다 위험하다) */
+let OUT_OF_RANGE=[
+  /* 수집을 시도했으나 상장폐지·티커 변경으로 확보하지 못한 종목 — 숨기지 않고 그대로 밝힌다 */
+  "엘앤에프",
+  /* 자주 언급되지만 이번 데이터셋에 담지 않은 종목·자산 */
+  "셀트리온헬스케어","삼성E&A","삼성엔지니어링","두산밥캣","두산로보틱스","한온시스템","코스맥스",
+  "씨에스윈드","대주전자재료","천보","솔브레인","덕산네오룩스","하나마이크론","티씨케이","케이엠더블유",
+  "나노신소재","성일하이텍","SK아이이테크놀로지","한화솔루션","OCI","효성중공업","LS일렉트릭",
+  "미래에셋증권","삼성증권","키움증권","NH투자증권","메리츠금융지주","카카오게임즈","컴투스",
+  "데브시스터즈","더블유게임즈","쿠팡","SK바이오팜","녹십자","대웅제약","종근당","휴젤","클래시스",
+  "파마리서치","레인보우로보틱스","신세계","현대백화점","GS리테일","오뚜기","빙그레","하이트진로",
+  "KT&G","LG생활건강","삼양식품","롯데웰푸드","현대글로비스","고려아연","현대제철","동국제강",
+  "대우건설","HDC현대산업개발","알루미늄",
+  /* 해외 개별주·암호자산 등 이번 범위 밖 */
+  "AMD","구글","알파벳","아마존","메타","팔란티어","코인베이스","마이크로스트래티지",
+  "비트코인","이더리움","리플","도지코인","금 현물","원유",
+  /* 이번에 담지 않은 ETF */
+  "SCHD","JEPI","TLT","ARKK","GLD","TIGER 차이나전기차","KODEX 2차전지산업"];
+
+let forcedTicker=null;   // 모호 표현에서 이용자가 직접 고른 대상
+function findTickers(text){
+  const cands=[];
+  ALIAS_LIST.forEach(([ph,tk])=>{if(A[tk])cands.push({phrase:ph,tk});});
+  Object.entries(A).forEach(([tk,a])=>{
+    if(a.name)cands.push({phrase:a.name,tk});
+    cands.push({phrase:tk.replace(/\.(KS|KQ)$/,""),tk});
+  });
+  cands.sort((x,y)=>nsp(y.phrase).length-nsp(x.phrase).length);
+  let work=nsp(text).toUpperCase();
+  const found=[],seen=new Set(),spans={};
+  if(forcedTicker&&A[forcedTicker]){found.push(forcedTicker);seen.add(forcedTicker);}
+  for(const c of cands){
+    if(seen.has(c.tk))continue;
+    const p=nsp(c.phrase).toUpperCase();
+    if(p.length<2||!work.includes(p))continue;
+    found.push(c.tk);seen.add(c.tk);
+    spans[c.tk]=findSpan(text,c.phrase)||c.phrase;
+    // 인식한 구간을 지워 같은 자리에 포함된 짧은 이름이 중복 인식되지 않게 한다
+    work=work.split(p).join(" ".repeat(p.length));
+  }
+  found.spans=spans;
+  return found;
+}
+/* 모호 표현·범위 밖 종목을 별도로 알려 준다 */
+function scanContext(text,tickers){
+  const amb=[];
+  for(const [word,cand] of Object.entries(AMBIGUOUS)){
+    const sp=findSpan(text,word); if(!sp) continue;
+    // 이미 구체적인 상품명이 인식되었으면 모호하지 않다
+    if(tickers.some(t=>nsp(A[t].name).includes(nsp(word))&&nsp(A[t].name)!==nsp(word)))continue;
+    if(tickers.some(t=>cand.includes(t)))continue;
+    amb.push({word:sp,cand:cand.filter(t=>A[t])});
+  }
+  const out=OUT_OF_RANGE.map(n=>findSpan(text,n)).filter(Boolean);
+  return {amb,out};
+}
+
+/* ---------- 판별 표현 사전 (한 곳에 모아 둔다) ----------
+   설계 시점에 생성형 AI로 만들고 사람이 검수한 표현들이다. 여기 한 곳에만 있으므로
+   [AI 설계 원장] 화면의 수량 표기는 이 배열의 실제 길이를 세어 표시한다(수치가 어긋날 수 없다). */
+const KW={
+  RECOVER:["회복","만회","손실 복구"],
+  HOLD:["장기","묻어","오래","적금처럼","들고 있으면"],
+  HEDGE:["방어","헤지","보험"],
+  DIV:["분산","나눠","여러 종목","포트폴리오","골고루","담았"],
+  REC:["본전","회복","만회","손실"]
+};
+/* 문장에 그 진술이 실제로 있었는지 판별하는 표현(근거 구절 인용의 원본) */
+const SP_KW={
+  compound:["장기","오래","누적","묻어","들고있으면","들고 가","보유","적금","계속","묻어두"],
+  profit:  ["번다","법니다","벌 수","벌어","벌죠","먹는","먹죠","수익","이익","수익률","돈이 된","이익을"],
+  safe:    ["안전","방어","헤지","보험","괜찮","리스크없","걱정"],
+  diversify:["분산","나눠","나누","골고루","포트폴리오","여러종목","충분히"],
+  recover: ["본전","회복","만회","물타","복구"],
+  down:    ["하락","떨어","빠졌","빠진","베팅","숏"]
+};
+function classifyClaim(text,tickers){
+  const T=nsp(text);
+  const hit=arr=>arr.some(k=>T.includes(nsp(k)));
+  const hasMult=statedMultOf(text)!=null;
+  const levTk=tickers.find(t=>A[t]&&A[t].cat==="lev");
+  if(levTk||(hasMult&&tickers.length)){
+    const tk=levTk||tickers[0];
+    if(A[tk]&&A[tk].cat==="lev"){
+      const long=A[tk].mult>0;
+      let intent;
+      if(long)intent=hit(KW.RECOVER)?"recover":hit(KW.HOLD)?"hold":"trend";
+      else intent=hit(KW.HEDGE)?"hedge":hit(KW.HOLD)?"hold":hit(KW.RECOVER)?"recover":"bet";
+      return {type:"lev",tk,intent};
+    }
+  }
+  const DIV_KW=KW.DIV;
+  /* 배수형 상품이 아닌 자산(개별 종목·지수·일반 ETF)은 모두 조합 분석의 대상이 된다.
+     ETF만 여러 개 담은 조합도 "종목 수 ≠ 독립 베팅 수"라는 같은 질문을 받아야 한다. */
+  const divTks=tickers.filter(t=>A[t]&&A[t].cat!=="lev");
+  if(divTks.length>=2&&(hit(DIV_KW)||divTks.length>=3))return {type:"div",tks:divTks};
+  const REC_KW=KW.REC;
+  if(tickers.length>=1&&hit(REC_KW))return {type:"rec",tk:tickers[0]};
+  if(tickers.length===1)return {type:"rec",tk:tickers[0]};
+  if(divTks.length>=2)return {type:"div",tks:divTks};
+  return null;
+}
+
+/* ---------- 계측 통계 (감사 판정과 화면이 같은 값을 쓰도록 한 곳에서 계산) ---------- */
+function levStats(tk,years){
+  const a=A[tk],b=A[a.base];if(!a||!b)return null;
+  const L=a.mult,{i0,i1}=rangeIdx(years),idx=commonIdx(b.px,a.px,i0,i1);
+  if(idx.length<40)return null;
+  const yrs=idx.length/ANN,ann=t=>t>-1?Math.pow(1+t,1/yrs)-1:NaN;
+  const bp=idx.map(i=>b.px[i]/b.px[idx[0]]);
+  const np=bp.map(x=>1+L*(x-1));
+  const dp=dailyLevPath(b.px,idx,L);
+  const ap=idx.map(i=>a.px[i]/a.px[idx[0]]);
+  const bT=bp[bp.length-1]-1,nT=np[np.length-1]-1,dT=dp[dp.length-1]-1,aT=ap[ap.length-1]-1;
+  const bA=ann(bT),nA=ann(nT),dA=ann(dT),aA=ann(aT);
+  const dd=ddOf(a.px,idx[0],idx[idx.length-1]);
+  return {L,long:L>0,idx,yrs,bT,nT,dT,aT,bA,nA,dA,aA,bp,np,dp,ap,i0,
+          pathEff:dA-nA,costEff:aA-dA,totalGap:aA-nA,
+          mdd:dd.mdd,need:needFor(dd.mdd),
+          from:DATES[idx[0]],to:DATES[idx[idx.length-1]],n:idx.length,
+          name:a.name,baseName:(A[a.base]&&A[a.base].name)||a.base};
+}
+function divStats(tks,years){
+  const {i0,i1}=rangeIdx(years),k=tks.length;if(k<2)return null;
+  const R=[];let first=null,last=null;
+  for(let i=i0+1;i<=i1;i++){const row=[];let ok=true;
+    for(const t of tks){const p=A[t].px,x=p[i-1],y=p[i];
+      if(x==null||y==null||!isFinite(x)||!isFinite(y)||x<=0){ok=false;break;}row.push(y/x-1);}
+    // 상장일이 늦은 종목이 있으면 요청 구간보다 실제 관측 구간이 짧다. 요청 경계가 아니라 실측 경계를 남긴다.
+    if(ok){R.push(row);if(first==null)first=i;last=i;}}
+  if(R.length<60)return null;
+  const cols=tks.map((_,j)=>R.map(r=>r[j])),C=[];let sq=0,off=0,cnt=0;
+  for(let i=0;i<k;i++){C.push([]);for(let j=0;j<k;j++){const c=i===j?1:corr(cols[i],cols[j]);
+    C[i][j]=c;sq+=c*c;if(i!==j){off+=c;cnt++;}}}
+  return {k,neff:k*k/sq,avg:cnt?off/cnt:0,ratio:(k*k/sq)/k,n:R.length,
+          from:DATES[first],to:DATES[last],asked:DATES[i0],trimmed:first>i0+1};
+}
+function recStats(tk,years){
+  const a=A[tk];if(!a)return null;
+  const {i0,i1}=rangeIdx(years),s=spanOf(a.px,i0,i1);if(!s)return null;
+  const dd=ddOf(a.px,i0,i1);
+  /* 현재 낙폭: 마지막 관측일 종가가 그때까지의 최고가 대비 어디에 있는가.
+     "많이 빠졌다"는 진술은 미래에 관한 말이 아니라 과거 데이터로 확인할 수 있는 사실이다. */
+  let peak=-Infinity,peakAt=-1;
+  for(let i=i0;i<=i1;i++){const v=a.px[i];if(v==null||!isFinite(v))continue;if(v>peak){peak=v;peakAt=i;}}
+  const curDD=(peak>0&&isFinite(s.last))?s.last/peak-1:0;
+  return {name:a.name,total:s.total,mdd:dd.mdd,need:needFor(dd.mdd),under:dd.under,
+          at:DATES[dd.at],from:DATES[s.fi],to:DATES[s.li],n:s.n,years:s.years,
+          curDD,curNeed:needFor(curDD),peakAt:DATES[peakAt]};
+}
+
+/* ---------- 주장 분해 및 판정 ----------
+   판정은 5단계다: 확인 / 부분 확인 / 불일치 / 검증 불가 / 데이터 부족.
+   미래 가격·수익에 관한 주장은 과거 데이터로 판정할 수 없으므로 '검증 불가'로 분리하고,
+   대신 검증 가능한 위험 지표만 제시한다. 참·거짓 이분법을 쓰지 않는 이유가 이것이다. */
+const V={ok:["확인","v-ok"],part:["부분 확인","v-part"],no:["불일치","v-no"],
+         na:["검증 불가","v-na"],lack:["데이터 부족","v-na"]};
+const FUTURE_KW=["갈 것","간다","오를 것","오른다","떨어질 것","전망","목표가","유망","곧",
+                 "앞으로","미래","될 것","예상","터진다","가즈아","무조건"];
+function auditClaims(text){
+  const tickers=findTickers(text);
+  const ctx=scanContext(text,tickers);
+  const r=classifyClaim(text,tickers);
+  if(!r)return {noAsset:true,ctx,tickers};
+  const T=nsp(text);
+  const hit=arr=>arr.some(k=>T.includes(nsp(k)));
+  const claims=[],limits=[],excluded=[],refs=[];
+  let finding={k:"",t:"",s:""},tab="tab-lev";
+
+  /* 감사의 원칙: 사용자가 실제로 말한 것만 감사한다.
+     문장에 근거가 없는 항목은 주장으로 만들지 않고 '감사하지 않음'으로 분리해 표시한다.
+     (하지 않은 말을 판정하면 그것은 감사가 아니라 생성이다) */
+  /* 각 진술의 '원문 근거 구절'을 함께 잡는다. 근거 구절이 없으면 그 주장은 만들지 않는다. */
+  const SP={
+    mult:     multSpan(text),
+    compound: hitSpan(text,SP_KW.compound),
+    profit:   hitSpan(text,SP_KW.profit),
+    safe:     hitSpan(text,SP_KW.safe),
+    diversify:hitSpan(text,SP_KW.diversify),
+    recover:  hitSpan(text,SP_KW.recover),
+    down:     hitSpan(text,SP_KW.down)
+  };
+  const said={mult:!!SP.mult,compound:!!SP.compound,profit:!!SP.profit,
+              safe:!!SP.safe,diversify:!!SP.diversify,recover:!!SP.recover};
+  const q=sp=>sp?` <span class="src-q">근거 구절 “${sp}”</span>`:"";
+  const statedMult=statedMultOf(text);
+  const futureSpan=hitSpan(text,FUTURE_KW)||(text.match(/\d+\s*만\s*원/)||[])[0]||null;
+  const futureAsk=!!futureSpan;
+
+  if(r.type==="lev"){
+    tab="tab-lev";
+    const st=levStats(r.tk,0)||levStats(r.tk,5);
+    if(!st)return {tickers,type:r.type,claims:[{t:`${A[r.tk].name}에 대한 주장`,v:"lack",
+      why:"이 상품과 기초자산이 함께 관측된 거래일이 계측에 필요한 최소 일수에 미치지 못했습니다."}],
+      limits:["관측 기간 부족으로 판정을 보류했습니다."],excluded:[],refs:[],ctx,
+      finding:{k:"판정 보류",t:"데이터가 부족해 이 주장은 감사하지 않았습니다.",s:""},tab,route:r};
+    const L=st.L,mult=Math.abs(L);
+
+    /* 주장 ①: 배수 관계 — 사용자가 배수를 말했을 때만 감사한다.
+       말한 배수가 실제와 다르면 그 자체가 불일치다. */
+    if(statedMult!=null){
+      const sm=statedMult, same=Math.abs(sm-mult)<0.01;
+      claims.push({t:`${st.name}${eun(st.name)} ${st.baseName}의 ${sm}배 상품이다`,v:same?"ok":"no",
+        why:q(SP.mult)+(same
+          ?`상품 구조상 사실입니다. 다만 이 배수는 <b>하루 수익률</b>에 적용되는 배수이며, 보유 기간 전체의 누적 수익률에 적용되는 배수가 아닙니다.`
+          :`이 상품의 실제 배수는 <b>${L>0?"":"−"}${mult}배</b>입니다. 입력 문장의 ${sm}배와 다릅니다.`)});
+    }else{
+      excluded.push(`${st.name}의 배수 관계 — 입력 문장에 배수에 관한 진술이 없습니다`);
+    }
+
+    if(st.long){
+      /* 주장 ②: 장기 누적도 배수만큼 — '배수' + '장기/수익' 진술이 함께 있을 때만 감사한다 */
+      if(statedMult!=null&&(said.compound||said.profit)){
+        const wins=[["전체",0],["5년",5],["3년",3]].map(([lb,y])=>({lb,s:levStats(r.tk,y)})).filter(w=>w.s);
+        const devs=wins.map(w=>w.s.aA-w.s.nA);
+        const maxDev=Math.max(...devs.map(Math.abs));
+        const signFlip=devs.some(d=>d>0)&&devs.some(d=>d<0);
+        const wtab=`<table class="ctab" style="margin-top:8px;font-size:12.5px">
+          <thead><tr><th>계측 창</th><th style="text-align:right">① 단순 ${mult}배 기대</th>
+          <th style="text-align:right">③ 실제 결과</th><th style="text-align:right">③ − ①</th></tr></thead><tbody>`+
+          wins.map(w=>`<tr><td>${w.lb} <span style="color:var(--ink3)">${w.s.from}~${w.s.to}</span></td>
+            <td class="mono" style="text-align:right">${F.sgn(w.s.nA)}/년</td>
+            <td class="mono" style="text-align:right">${F.sgn(w.s.aA)}/년</td>
+            <td class="mono" style="text-align:right;color:${(w.s.aA-w.s.nA)<0?"var(--loss)":"var(--ok)"}">${F.pp(w.s.aA-w.s.nA)}</td></tr>`).join("")+
+          `</tbody></table>`;
+        claims.push({t:`${said.compound?"장기 보유 시 ":""}누적 수익도 기초자산의 ${mult}배가 된다`,v:maxDev>=0.01?"no":"part",
+          why:q(SP.compound||SP.profit)+`사전에 정한 세 개의 계측 창 모두에서 실제 결과는 단순 ${mult}배 기대치와 일치하지 않았습니다. 편차는 최대 <b>${(maxDev*100).toFixed(1)}%p/년</b>${signFlip?"이며, 구간에 따라 <b>부호까지 바뀝니다</b>":""}.${wtab}
+          <div style="margin-top:7px">전체 구간 기준 이 편차는 일일 재조정이 만든 경로효과 <b>${F.pp(st.pathEff)}</b>와 비용·추적오차 <b>${F.pp(st.costEff)}</b>로 분해됩니다.</div>`});
+        finding={k:"핵심 발견",
+          t:`"${mult}배"는 <b>하루 수익률의 ${mult}배</b>이지 <b>보유 기간 누적 수익률의 ${mult}배</b>가 아닙니다. 세 계측 창 모두에서 실제 결과는 단순 ${mult}배 기대치와 달랐고, 편차는 최대 ${(maxDev*100).toFixed(1)}%p/년이었습니다.`,
+          s:signFlip
+            ? `주목할 점은 이 편차의 <b>부호가 구간에 따라 바뀐다</b>는 것입니다. 즉 "단순 배수"는 결과를 낮게도 높게도 빗나가는 값이며, 애초에 이 상품의 결과를 추정하는 값이 아닙니다. 감사 결과는 "이 상품이 불리하다"가 아니라 "기대의 근거가 된 계산식이 이 상품에 성립하지 않는다"로 읽으셔야 합니다.`
+            : `이 편차는 방향 예측의 성패와 무관하게 매일의 재조정이라는 상품 구조에서 발생합니다. 강한 추세 구간에서는 편차가 유리한 쪽으로 나타나기도 하므로, 감사 결과는 "불리하다"가 아니라 "기대한 값과 다르다"로 읽으셔야 합니다.`};
+        limits.push("계측 창은 결과를 보기 전에 전체·5년·3년으로 고정했으며, 특정 구간을 선택해 결론을 만들지 않았습니다.");
+      }else{
+        excluded.push(`누적 수익의 배수 관계 — 입력 문장에 장기 보유나 수익에 관한 진술이 없습니다`);
+      }
+      /* 주장 ③: 수익 기대 — 사용자가 수익을 말했을 때만 */
+      if(said.profit){
+        claims.push({t:`따라서 이 상품은 ${mult}배로 이익을 준다`,v:"part",
+          why:q(SP.profit)+`배수는 손실에도 동일하게 적용됩니다. 전체 구간 실측 최대낙폭은 <b>${F.pct(st.mdd,1)}</b>이었고, 그 지점에서 원금 회복에 <b>${F.big(st.need)}</b>가 필요했습니다.`});
+      }
+    }else{
+      /* 인버스: 방향성·방어 진술이 있을 때만 감사 */
+      if(said.profit||statedMult!=null||SP.down){
+        claims.push({t:`기초자산이 내리면 그만큼 대칭적으로 이익이 난다`,v:"no",
+          why:q(SP.down||SP.profit)+`인버스의 손익은 비대칭입니다. 기초자산의 상승에는 상한이 없지만 이 상품의 손실은 −100%가 하한입니다. 실측 구간(${st.from}~${st.to}) 누적 결과는 <b>${F.sgn(st.aT)}</b>이었고, 매일 배수를 정확히 맞췄다고 가정해도 <b>${F.sgn(st.dT)}</b>입니다.`});
+      }
+      if(said.safe){
+        claims.push({t:`하락 위험을 방어하는 수단이 된다`,v:"part",
+          why:q(SP.safe)+`단기 방어에는 구조가 부합하지만, 매일 재조정되므로 보유 기간이 길어지면 기초자산 방향과 무관하게 가치가 감소합니다. 실측 최대낙폭 <b>${F.pct(st.mdd,1)}</b>, 원금 회복 필요 수익률 <b>${F.big(st.need)}</b>.`});
+      }else{
+        excluded.push("하락 방어 효과 — 입력 문장에 방어·헤지에 관한 진술이 없습니다");
+      }
+      finding={k:"핵심 발견",
+        t:`인버스 상품에는 <b>단순 배수 계산이 성립하지 않습니다</b>. 손실 하한이 −100%로 고정되어 있어 방향을 맞히는 문제와 별개로 회복 가능성이 산술적으로 제한됩니다.`,
+        s:`실측 구간 누적 ${F.sgn(st.aT)}, 원금 회복 필요 수익률 ${F.big(st.need)}.`};
+    }
+    refs.push(`${st.name} 전체 구간(${st.from}~${st.to}, ${st.n}거래일) 최대낙폭 ${F.pct(st.mdd,1)}, 원금 회복 필요 수익률 ${F.big(st.need)}`);
+    limits.push(`계측 창 ${st.from} ~ ${st.to} (양쪽 모두 관측된 ${st.n}거래일). 구간을 바꾸면 경로효과의 크기와 부호가 달라질 수 있습니다.`,
+      "거래비용·세금·유동성 제약은 반영하지 않았습니다.");
+  }
+
+  if(r.type==="div"){
+    tab="tab-div";
+    const st=divStats(r.tks,3)||divStats(r.tks,5)||divStats(r.tks,0);
+    const names=r.tks.map(t=>A[t].name).join(", ");
+    if(!st)return {tickers,type:r.type,claims:[{t:`${names} 조합에 대한 주장`,v:"lack",
+      why:"선택된 종목들의 공통 관측 기간이 짧아 상관구조를 계산할 수 없습니다."}],
+      limits:["공통 관측 기간 부족으로 판정을 보류했습니다."],excluded:[],refs:[],ctx,
+      finding:{k:"판정 보류",t:"데이터가 부족해 이 주장은 감사하지 않았습니다.",s:""},tab,route:r};
+    claims.push({t:`${st.k}개 종목을 보유하고 있다`,v:"ok",
+      why:`문장에서 ${st.k}개 종목(${names})을 인식했습니다. 명목 종목 수는 사실입니다.`});
+    if(said.diversify||said.safe){
+      const bad=st.ratio<0.5, mid=st.ratio<0.75;
+      const dwins=[["3년",3],["5년",5],["전체",0]].map(([lb,y])=>({lb,s:divStats(r.tks,y)})).filter(w=>w.s);
+      const dtab=`<table class="ctab" style="margin-top:8px;font-size:12.5px">
+        <thead><tr><th>계측 창 (실제 공통 관측 구간)</th><th style="text-align:right">실질 독립 베팅 수</th>
+        <th style="text-align:right">명목 대비</th><th style="text-align:right">평균 상호상관</th></tr></thead><tbody>`+
+        dwins.map(w=>`<tr><td>${w.lb} <span style="color:var(--ink3)">${w.s.from}~${w.s.to} · ${w.s.n}일${w.s.trimmed?" (상장일로 조정)":""}</span></td>
+          <td class="mono" style="text-align:right">${w.s.neff.toFixed(2)}개 / ${w.s.k}개</td>
+          <td class="mono" style="text-align:right">${(w.s.ratio*100).toFixed(0)}%</td>
+          <td class="mono" style="text-align:right">${w.s.avg.toFixed(3)}</td></tr>`).join("")+`</tbody></table>`;
+      claims.push({t:`따라서 위험이 ${st.k}개로 분산되어 있다`,v:bad?"no":(mid?"part":"ok"),
+        why:q(SP.diversify||SP.safe)+`일간 수익률 상관행렬의 고윳값으로 계산한 실질 독립 베팅 수는 <b>${st.neff.toFixed(2)}개</b>로, 명목 ${st.k}종목의 <b>${(st.ratio*100).toFixed(0)}%</b> 수준입니다. 사전에 정한 세 계측 창 모두에서 같은 방향의 결과가 관측되었습니다.${dtab}`});
+      finding={k:"핵심 발견",
+        t:`분산의 크기는 <b>종목의 개수</b>가 아니라 <b>서로 다르게 움직이는 정도</b>로 결정됩니다. 이 조합은 명목상 ${st.k}종목이지만 실질적으로는 <b>${st.neff.toFixed(2)}개</b>에 베팅하는 것과 같습니다.`,
+        s:`평균 상호상관 ${st.avg.toFixed(3)}. 같은 산업·공급망·테마에 속한 종목을 여러 개 담으면 개수는 늘어나도 베팅은 하나에 가까워집니다.`};
+    }else{
+      excluded.push("분산 효과 — 입력 문장에 분산에 관한 진술이 없습니다");
+      finding={k:"감사 결과",
+        t:`문장에서 ${st.k}개 종목을 인식했지만, 분산·위험에 관한 <b>주장은 발견되지 않았습니다</b>. 알파가드는 하지 않은 주장을 만들어 판정하지 않습니다.`,
+        s:`참고로 이 조합의 실질 독립 베팅 수는 ${st.neff.toFixed(2)}개(명목의 ${(st.ratio*100).toFixed(0)}%)입니다. 아래 근거 계측에서 직접 확인하실 수 있습니다.`};
+    }
+    refs.push(`이 조합의 실질 독립 베팅 수 ${st.neff.toFixed(2)}개 / ${st.k}개, 평균 상호상관 ${st.avg.toFixed(3)} (${st.from}~${st.to}, ${st.n}일)`);
+    limits.push(`계측 창 ${st.from} ~ ${st.to} (실제 공통 관측 ${st.n}거래일). 상관구조는 국면에 따라 변하며, 하락 국면에서 상관이 함께 높아지는 경향이 있습니다.`,
+      "동일가중 보유를 가정했으며 실제 보유 비중은 반영하지 않았습니다.");
+  }
+
+  if(r.type==="rec"){
+    tab="tab-rec";
+    const st=recStats(r.tk,0);
+    if(!st)return {tickers,type:r.type,claims:[{t:`${A[r.tk].name}에 대한 주장`,v:"lack",
+      why:"관측 데이터가 부족합니다."}],limits:[],excluded:[],refs:[],ctx,
+      finding:{k:"판정 보류",t:"데이터가 부족해 이 주장은 감사하지 않았습니다.",s:""},tab,route:r};
+    const m=text.match(/(\d+(\.\d+)?)\s*%/g);
+    if(m&&m.length>=2){
+      const nums=m.map(x=>parseFloat(x));
+      const loss=nums[0]/100, gain=nums[1]/100, real=needFor(-loss);
+      claims.push({t:`${(loss*100).toFixed(0)}% 손실은 ${(gain*100).toFixed(0)}% 상승으로 회복된다`,
+        v:Math.abs(gain-real)<0.005?"ok":"no",
+        why:`산술 검증: −${(loss*100).toFixed(0)}%에서 원금으로 돌아오려면 <b>${F.big(real)}</b>가 필요합니다. 손실은 원금 기준, 회복은 남은 금액 기준으로 계산되기 때문입니다.`});
+      finding={k:"핵심 발견",
+        t:`손실률과 회복 필요 수익률은 같지 않습니다. −${(loss*100).toFixed(0)}%의 회복에는 <b>${F.big(real)}</b>가 필요합니다.`,
+        s:`−50%는 +100%, −80%는 +400%가 필요합니다. 손실은 선형이지만 회복은 그렇지 않습니다.`};
+    }else if(said.recover){
+      claims.push({t:`손실을 회복할 수 있다`,v:"na",
+        why:q(SP.recover)+`회복 가능 여부는 장래 수익률에 관한 주장이므로 과거 데이터로 판정할 수 없습니다. 대신 이 종목이 과거에 실제로 요구했던 회복 수익률을 아래 참고 지표로 제시합니다.`});
+      finding={k:"핵심 발견",
+        t:`회복 가능성은 미래에 관한 주장이라 감사 대상이 아닙니다. 다만 <b>${st.name}</b>${ega(st.name)} 과거에 실제로 요구했던 회복폭은 계측할 수 있습니다.`,
+        s:`전체 구간 최대낙폭 ${F.pct(st.mdd,1)} 지점에서 원금까지 필요했던 수익률은 ${F.big(st.need)}였습니다.`};
+    }
+    /* "많이 빠졌으니까 괜찮은 거 아냐?" 형태 — 두 개의 서로 다른 진술이 섞여 있다.
+       ① 많이 빠졌다   : 과거 데이터로 확인할 수 있는 사실
+       ② 그러므로 괜찮다: 장래 수익률에 관한 추론 — 판정하지 않고 분리한다 */
+    if(SP.down){
+      const d=Math.abs(st.curDD);
+      claims.push({t:`${st.name}${eun(st.name)} 최근 크게 하락했다`,
+        v:d>=0.20?"ok":(d>=0.10?"part":"no"),
+        why:q(SP.down)+`마지막 관측일(${st.to}) 종가는 관측 구간 내 최고가(${st.peakAt}) 대비 <b>${F.pct(st.curDD,1)}</b> 수준입니다.`+
+          (d>=0.20?` 하락 폭이 크다는 진술은 데이터와 일치합니다.`
+                  :(d>=0.10?` 하락은 있었으나 "크게"라고 보기에는 폭이 제한적입니다.`
+                          :` 현재 낙폭이 크지 않아 이 진술은 데이터와 일치하지 않습니다.`))});
+    }
+    if(said.safe){
+      claims.push({t:SP.down?`많이 하락했으므로 지금은 안전하다(또는 반등한다)`:`${st.name}${eun(st.name)} 안전하다`,v:"na",
+        why:q(SP.safe)+`하락 폭의 크기는 장래의 회복 여부와 인과관계가 없습니다. 이 진술은 미래 수익률에 관한 주장이므로 판정하지 않습니다. 다만 <b>낙폭이 클수록 원금 복귀에 필요한 수익률이 비선형으로 커진다</b>는 사실은 계측할 수 있습니다. 현재 낙폭 ${F.pct(st.curDD,1)}에서 최고가로 돌아가려면 <b>${F.big(st.curNeed)}</b>가 필요하며, 이 종목의 전체 구간 최대낙폭은 <b>${F.pct(st.mdd,1)}</b>(저점 ${st.at}), 전 고점을 회복하지 못한 최장 기간은 <b>${st.under}거래일</b>이었습니다.`});
+      finding={k:"핵심 발견",
+        t:`"많이 빠졌다"와 "그러므로 안전하다"는 <b>서로 다른 종류의 진술</b>입니다. 앞은 과거 데이터로 확인되지만, 뒤는 장래 수익률에 관한 주장이라 확인할 수 없습니다.`,
+        s:`알파가드는 이 둘을 한 문장에서 분리해 각각 다르게 처리합니다. ${st.name}은 과거에 최대 ${F.pct(st.mdd,1)}까지 하락했고, 그 지점에서 원금 복귀에 ${F.big(st.need)}가 필요했으며, 전 고점 회복까지 최장 ${st.under}거래일이 걸렸습니다.`};
+    }
+    if(!claims.length&&!futureAsk){
+      excluded.push(`${st.name}의 손실·회복 — 입력 문장에 손실률이나 회복에 관한 구체적 진술이 없습니다`);
+      finding={k:"감사 결과",
+        t:`문장에서 <b>${st.name}</b>${eul(st.name)} 인식했지만, 과거 데이터로 확인할 수 있는 주장은 발견되지 않았습니다.`,
+        s:`알파가드는 인식한 종목에 대해 사용자가 하지 않은 주장을 만들어 판정하지 않습니다. 참고 지표만 아래에 제시합니다.`};
+    }
+    refs.push(`${st.name} 전체 구간(${st.from}~${st.to}, ${st.n}거래일) 최대낙폭 ${F.pct(st.mdd,1)}(저점 ${st.at}), 원금 회복 필요 수익률 ${F.big(st.need)}, 전 고점 미회복 최장 ${st.under}거래일`);
+    limits.push(`계측 창 ${st.from} ~ ${st.to} (${st.n}거래일). 배당 재투자를 반영한 수정 종가 기준입니다.`);
+  }
+
+  if(futureAsk){
+    claims.push({t:"앞으로 오를 것이다 / 목표가에 도달할 것이다",v:"na",
+      why:q(futureSpan)+` 미래 가격·수익률에 관한 주장은 과거 데이터로 사실 여부를 판정할 수 없습니다. 알파가드는 이런 주장에 판정을 강제하지 않고 <b>검증 불가</b>로 분리하며, 대신 아래 참고 지표만 제시합니다.`});
+  }
+  if(claims.length&&!finding.t){
+    /* 판정은 났지만 대표 발견이 정해지지 않은 경우(예: 배수만 언급하고 수익 주장은 없는 문장) */
+    const na=claims.filter(c=>c.v==="na").length, ok=claims.filter(c=>c.v==="ok").length;
+    const onlyNa=na===claims.length;
+    finding= onlyNa
+      ? {k:"핵심 발견",
+         t:`이 문장은 <b>장래의 가격·수익률에 관한 주장</b>입니다. 과거 데이터로는 참·거짓을 판정할 수 없으므로 알파가드는 판정을 내리지 않고 <b>검증 불가</b>로 분리했습니다.`,
+         s:`대신 같은 대상에 대해 과거 데이터로 확인할 수 있는 위험 지표를 아래 참고 지표에 제시합니다. 판정을 강제하지 않는 것 자체가 이 서비스의 설계 원칙입니다 — 확인할 수 없는 것을 확인한 것처럼 말하지 않습니다.`}
+      : {k:"감사 결과",
+         t:na?`이 문장에는 과거 데이터로 <b>확인할 수 있는 진술</b>과 <b>확인할 수 없는 기대</b>가 섞여 있습니다. 확인 ${ok}건, 검증 불가 ${na}건으로 분리했습니다.`
+             :`이 문장에서 확인 가능한 진술 ${claims.length}건을 감사했습니다.`,
+         s:`알파가드는 검증할 수 없는 주장에 판정을 강제하지 않습니다. 확인 가능한 과거 계측값은 아래 참고 지표에 있습니다.`};
+  }
+  if(!claims.length){
+    finding={k:"감사 결과 — 판정할 주장 없음",
+      t:`문장에서 <b>${tickers.map(t=>A[t].name).join(", ")}</b>${eul(tickers.length?A[tickers[tickers.length-1]].name:"")} 인식했지만, 과거 데이터로 사실 여부를 확인할 수 있는 <b>주장은 발견되지 않았습니다</b>.`,
+      s:`알파가드는 종목이 언급되었다는 이유만으로 이용자가 하지 않은 주장을 만들어 판정하지 않습니다. 확인 가능한 과거 계측값은 위 참고 지표에 제시했으며, 아래 근거 계측에서 직접 확인하실 수 있습니다.`};
+  }
+  limits.push("이 감사는 주장이 과거 데이터와 일치하는지를 확인할 뿐, 해당 상품의 매수·매도 여부나 장래 성과에 대해서는 어떠한 판단도 제공하지 않습니다.");
+  return {tickers,type:r.type,claims,limits,excluded,refs,finding,tab,route:r,ctx};
+}
+const CLAIM_EXAMPLES=[
+  "TQQQ는 나스닥 3배 상품이니까 장기로 들고 있으면 나스닥 오른 것의 3배를 법니다. 지금이 매수 타이밍입니다.",
+  "KODEX 레버리지는 코스피 2배니까 오래 들고 있으면 지수보다 두 배로 벌 수 있습니다.",
+  "SOXL은 반도체 3배 ETF라 반도체 사이클 타면 앞으로 무조건 오릅니다.",
+  "삼성전자, SK하이닉스, 한미반도체 세 종목에 나눠 담았으니 분산 투자가 된 겁니다.",
+  "LG에너지솔루션, 삼성SDI, 에코프로비엠, 에코프로, LG화학 5종목이면 충분히 분산했습니다.",
+  "카카오가 50% 떨어졌는데 50%만 오르면 본전이니까 지금 물타면 됩니다.",
+  "코스피 곧 떨어지니까 KODEX 200선물인버스2X 들고 있으면 하락장 방어됩니다.",
+  "삼성전자는 앞으로 20만원까지 갑니다. 지금 사두면 됩니다."
+];
+let auditTab="tab-lev";
+function runClaimCheck(text){
+  text=(text||"").trim();
+  const no=document.getElementById("claimNoMatch"),au=document.getElementById("audit");
+  if(!text){no.className="nomatch";au.className="";return;}
+  const res=auditClaims(text);
+  const renderCtx=(ctx)=>{
+    const ambEl=document.getElementById("auditAmb"),outEl=document.getElementById("auditOut");
+    if(ctx&&ctx.amb&&ctx.amb.length){
+      ambEl.innerHTML=`<div class="amk">감사 대상 확인이 필요합니다</div>`+
+        ctx.amb.map(a=>`<div>“<b>${a.word}</b>”는 여러 상품에 해당할 수 있어 임의로 확정하지 않았습니다.
+          어느 상품을 말씀하신 것인지 선택해 주십시오.
+          <div class="ambtns">`+a.cand.map(t=>`<button type="button" class="ambtn" data-tk="${t}">${A[t].name}</button>`).join("")+
+          `</div></div>`).join("");
+      ambEl.style.display="block";
+    }else ambEl.style.display="none";
+    if(ctx&&ctx.out&&ctx.out.length){
+      outEl.innerHTML=`<div class="amk">현재 데이터 범위 밖</div>
+        “<b>${ctx.out.join("</b>”, “<b>")}</b>”${ctx.out.length>1?"은":eun(ctx.out[ctx.out.length-1])} 문장에서 인식했지만 이 MVP의 감사 대상
+        ${Object.keys(A).length}종에 포함되어 있지 않습니다. 비슷한 이름의 다른 종목으로 대신 해석하지 않았습니다.
+        해당 종목의 시세 데이터가 추가되면 동일한 절차로 감사할 수 있습니다.`;
+      outEl.style.display="block";
+    }else outEl.style.display="none";
+  };
+  if(res&&res.noAsset){
+    document.getElementById("auditQuote").textContent="“"+text+"”";
+    document.getElementById("auditMeta").textContent="감사 대상 미확정";
+    renderCtx(res.ctx);
+    ["auditTally","auditTable","auditFinding","auditLimits"].forEach(i=>document.getElementById(i).innerHTML="");
+    ["auditExcluded","auditRefs"].forEach(i=>document.getElementById(i).style.display="none");
+    document.getElementById("auditFinding").innerHTML=
+      `<div class="fk">감사 결과</div><p>이 문장에서 감사 대상을 확정하지 못했습니다.</p>`+
+      (res.ctx.out.length?`<p>인식된 종목이 현재 데이터 범위 밖입니다. 위 안내를 확인해 주십시오.</p>`
+        :`<p>감사 대상 ${Object.keys(A).length}종에 해당하는 종목·상품을 찾지 못했습니다. 종목명을 포함해 다시 입력하시거나 아래 예시를 선택해 주십시오.</p>`);
+    au.className="show"; no.className="nomatch";
+    au.scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+  if(!res){
+    no.innerHTML=`<b>감사할 수 있는 대상을 찾지 못했습니다.</b><br>
+      이 문장에서 알파가드가 보유한 데이터와 연결되는 종목·상품명을 인식하지 못했습니다.
+      종목명 또는 티커(예: 삼성전자, TQQQ, KODEX 레버리지)를 포함해 다시 입력하시거나
+      위 예시 문장 중 하나를 선택하십시오. 현재 MVP의 감사 대상은 국내외 주요 종목·ETF
+      ${Object.keys(A).length}종입니다.`;
+    no.className="nomatch show";au.className="";
+    no.scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
+  no.className="nomatch";
+  auditTab=res.tab;
+
+  /* 근거 엔진을 이 주장에 맞춰 설정해 둔다 (버튼을 누르면 그 상태가 열린다) */
+  const r=res.route;
+  if(r.type==="lev"){document.getElementById("levSel").value=r.tk;levIntent=r.intent;renderIntents();renderLev();}
+  else if(r.type==="div"){picked=new Set(r.tks);renderPicks();renderDiv();}
+  else if(r.type==="rec"){document.getElementById("recSel").value=r.tk;renderRec();}
+
+  document.getElementById("auditQuote").textContent="“"+text+"”";
+  const names=res.tickers.map(t=>A[t].name).join(" · ");
+  const now=DATES[DATES.length-1];
+  document.getElementById("auditMeta").textContent=
+    `인식 대상 ${names} · 데이터 기준일 ${now} (최근 거래일 종가 기준, 장중 가격 아님)`;
+  renderCtx(res.ctx);
+
+  const cnt={ok:0,part:0,no:0,na:0,lack:0};
+  res.claims.forEach(c=>cnt[c.v]++);
+  document.getElementById("auditTally").innerHTML=[
+    ["확인",cnt.ok,"var(--ok)"],["부분 확인",cnt.part,"var(--signal)"],
+    ["불일치",cnt.no,"var(--loss)"],["검증 불가",cnt.na+cnt.lack,"var(--ink2)"]
+  ].map(([k,v,c])=>`<div><div class="tv mono" style="color:${c}">${v}</div><div class="tk">${k}</div></div>`).join("");
+
+  document.getElementById("auditTable").innerHTML= res.claims.length? (
+    `<thead><tr><th></th><th>분해된 주장</th><th>판정</th></tr></thead><tbody>`+
+    res.claims.map((c,i)=>`<tr><td class="n mono">${i+1}</td>
+      <td><b>${c.t}</b><div class="why">${c.why}</div></td>
+      <td class="st"><span class="vb ${V[c.v][1]}">${V[c.v][0]}</span></td></tr>`).join("")+
+    `</tbody>`) : `<tbody><tr><td style="color:var(--ink2);padding:14px 10px">
+      이 문장에서 과거 데이터로 판정할 수 있는 주장을 찾지 못했습니다. 아래 항목을 확인하십시오.</td></tr></tbody>`;
+
+  const exEl=document.getElementById("auditExcluded");
+  if(res.excluded&&res.excluded.length){
+    exEl.innerHTML=`<div class="exk">문장에 근거가 없어 감사하지 않은 항목 ${res.excluded.length}건</div>`+
+      "<ul>"+res.excluded.map(x=>`<li>${x}</li>`).join("")+"</ul>"+
+      `<p class="exnote">알파가드는 종목을 인식했다는 이유만으로 이용자가 하지 않은 주장을 만들어 판정하지 않습니다.</p>`;
+    exEl.style.display="block";
+  }else exEl.style.display="none";
+
+  const refEl=document.getElementById("auditRefs");
+  if(res.refs&&res.refs.length){
+    refEl.innerHTML=`<div class="exk">참고 지표 — 판정이 아니라 확인 가능한 과거 계측값</div>`+
+      "<ul>"+res.refs.map(x=>`<li>${x}</li>`).join("")+"</ul>";
+    refEl.style.display="block";
+  }else refEl.style.display="none";
+
+  document.getElementById("auditFinding").innerHTML=
+    `<div class="fk">${res.finding.k}</div><p>${res.finding.t}</p>`+
+    (res.finding.s?`<p>${res.finding.s}</p>`:"");
+  document.getElementById("auditLimits").innerHTML=
+    "<ul>"+res.limits.map(x=>`<li>${x}</li>`).join("")+"</ul>";
+
+  au.className="show";
+  au.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function segWire(id,fn){const b=document.getElementById(id);
+  b.addEventListener("click",e=>{const t=e.target.closest("button");if(!t)return;
+    [...b.querySelectorAll("button")].forEach(x=>x.setAttribute("aria-pressed",x===t?"true":"false"));fn(t);});}
+
+/* ================= 1. 레버리지 ================= */
+let levYears=3, levIntent=null;
+function levKind(a){return a.mult>0?"lev_long":"lev_short";}
+function renderIntents(){
+  const a=A[document.getElementById("levSel").value];if(!a)return;
+  const kind=levKind(a);
+  const list=INTENTS.filter(i=>i.for.includes(kind));
+  if(!list.some(i=>i.id===levIntent))levIntent=list[0].id;
+  document.getElementById("levIntent").innerHTML=list.map(i=>
+    `<button data-i="${i.id}" aria-pressed="${i.id===levIntent}">${i.label}</button>`).join("");
+}
+document.getElementById("levIntent").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;levIntent=b.dataset.i;renderIntents();renderLev();});
+
+function renderLev(){
+  const tk=document.getElementById("levSel").value, a=A[tk];if(!a)return;
+  const b=A[a.base];if(!b)return;
+  // 감사 보고서와 화면이 같은 함수로 계산한다. 두 곳의 숫자가 갈라질 여지를 없앤다.
+  const S=levStats(tk,levYears);
+  if(!S){document.getElementById("levGap").textContent="—";
+    document.getElementById("levVerdictText").textContent="이 구간에는 기초자산과 상품이 함께 관측된 날이 충분하지 않습니다. 계측 구간을 늘려주십시오.";return;}
+  const {L,long,idx,i0,bp,np,dp,ap,bT,nT,dT,aT,bA,nA,dA,aA,pathEff,costEff,totalGap}=S;
+
+  // 국내/해외 휴장일이 달라 공통 관측일은 항상 요청 구간보다 짧다. 이건 결측이 아니다.
+  // 진짜 신호는 '첫 관측일이 요청 시작일보다 늦은가' 이다.
+  const lateBy=idx[0]-i0;
+  document.getElementById("levWindow").innerHTML=
+    `계측 창 ${DATES[idx[0]]} ~ ${DATES[idx[idx.length-1]]}<br>양쪽 모두 관측된 날 ${idx.length}일`+
+    (lateBy>10?`<br><b style="color:var(--signal)">상장이 늦어 시작일이 ${DATES[idx[0]]}로 조정되었습니다.</b>`:"");
+  renderAI(document.getElementById("aiBelief"),document.getElementById("aiBody"),
+           EXPLAIN[levKind(a)+"/"+levIntent]||EXPLAIN[levKind(a)+"/hold"]);
+
+  document.getElementById("levDecompPanel").classList.remove("hidden");
+  document.getElementById("levLegend").innerHTML=
+    `<span><i style="background:var(--base)"></i>기초자산</span>`+
+    (long?`<span><i style="background:var(--naive)"></i>① 단순 배수 기대</span>`:"")+
+    `<span><i style="background:var(--ink3)"></i>② 일별 배수 복리</span>`+
+    `<span><i style="background:var(--signal-line)"></i>③ 실제 상품</span>`;
+
+  if(long){
+    document.getElementById("levHeadLbl").textContent="연환산 격차 (실제 − 단순 배수)";
+    document.getElementById("levGap").textContent=F.pp(totalGap)+"/년";
+    document.getElementById("levVerdictText").innerHTML=
+      `<b>${a.baseName}</b>${ega(a.baseName)} 연 ${F.sgn(bA)}일 때 배수(${L}배)만 곱하면 연 <b>${F.sgn(nA)}</b>여야 하지만,
+       <b>${a.name}</b>의 실제 결과는 연 <b>${F.sgn(aA)}</b>였습니다.
+       이 격차는 <b>경로효과 ${F.pp(pathEff)}</b>와 <b>비용·추적 ${F.pp(costEff)}</b>로 나뉩니다.`;
+  }else{
+    const need=needFor(aT);
+    document.getElementById("levHeadLbl").textContent="이 구간 누적 결과";
+    document.getElementById("levGap").textContent=F.sgn(aT);
+    document.getElementById("levVerdictText").innerHTML=
+      `<b>${a.baseName}</b>${ega(a.baseName)} ${F.sgn(bT)}인 동안 <b>${a.name}</b>${eun(a.name)} <b>${F.sgn(aT)}</b>였습니다.
+       ${aT<0?`원금으로 돌아오려면 <b>${F.big(need)}</b>가 필요합니다. `:""}
+       매일 배수를 정확히 맞췄다고 가정해도 결과는 <b>${F.sgn(dT)}</b>입니다 —
+       이 손실의 대부분은 비용이 아니라 <b>구조</b>에서 나왔습니다.
+       인버스의 손실은 −100%가 하한이고 기초자산의 상승에는 상한이 없습니다.`;
+  }
+  document.getElementById("levChartSub").textContent= long
+    ? "① 사람들이 기대하는 값, ② 상품이 구조적으로 하는 일, ③ 실제로 일어난 일 — 세 경로를 같은 날짜 위에 겹쳐 그렸습니다."
+    : "인버스에는 단순 배수 비교를 적용하지 않습니다. 손실 하한이 −100%여서 단순 곱셈이 성립하지 않기 때문입니다.";
+
+  const dd=ddOf(a.px,idx[0],idx[idx.length-1]);
+  document.getElementById("levCells").innerHTML= long ? cellHTML([
+      ["기초자산",F.sgn(bA)+"/년",a.baseName+" · 누적 "+F.sgn(bT,0),bA<0?"neg":"pos"],
+      ["① 단순 배수 기대",F.sgn(nA)+"/년",L+"배 단순 계산",nA<0?"neg":"pos"],
+      ["② 일별 배수 복리",F.sgn(dA)+"/년","구조상 도달 가능한 값",dA<0?"neg":"pos"],
+      ["③ 실제 상품",F.sgn(aA)+"/년",a.name+" · 누적 "+F.sgn(aT,0),aA<0?"neg":"pos"]])
+    : cellHTML([
+      ["기초자산 누적",F.sgn(bT),a.baseName,bT<0?"neg":"pos"],
+      ["② 일별 배수 복리",F.sgn(dT),"구조상 도달 가능한 값",dT<0?"neg":"pos"],
+      ["③ 실제 상품 누적",F.sgn(aT),a.name,aT<0?"neg":"pos"],
+      ["최대낙폭",F.pct(dd.mdd,1),"고점 대비","neg"]]);
+
+  const rb=[];for(let k=1;k<idx.length;k++)rb.push(b.px[idx[k]]/b.px[idx[k-1]]-1);
+  const s=sd(rb), theo=(L*L-L)*s*s*ANN/2;
+  document.getElementById("levTable").innerHTML=`
+    <thead><tr><th>연환산 기준</th><th>값</th><th>이 값의 의미</th></tr></thead><tbody>
+    <tr><td>① 단순 배수 기대</td><td class="mono ${nA<0?"neg":"pos"}">${F.sgn(nA)}</td>
+        <td>기초자산 누적수익에 배수를 곱한 값. 대부분의 투자자가 기대하는 값</td></tr>
+    <tr><td>② 일별 배수 복리</td><td class="mono ${dA<0?"neg":"pos"}">${F.sgn(dA)}</td>
+        <td>실제 일별 수익률에 배수를 적용해 복리로 누적한 값. 비용이 0이라면 도달했을 값</td></tr>
+    <tr class="total"><td>경로효과 (② − ①)</td><td class="mono ${pathEff<0?"neg":"pos"}">${F.pp(pathEff)}</td>
+        <td>${pathEff<0?"오르내림이 반복되어 배수 재조정이 불리하게 작동":"한 방향 추세가 이어져 배수 재조정이 유리하게 작동"}</td></tr>
+    <tr><td>③ 실제 상품</td><td class="mono ${aA<0?"neg":"pos"}">${F.sgn(aA)}</td><td>실제 시세로 계산한 결과</td></tr>
+    <tr class="total"><td>비용·추적 (③ − ②)</td><td class="mono ${costEff<0?"neg":"pos"}">${F.pp(costEff)}</td>
+        <td>운용보수 · 차입비용 · 선물 롤비용 · 추적오차의 합</td></tr>
+    <tr class="total"><td>합계 격차 (③ − ①)</td><td class="mono ${totalGap<0?"neg":"pos"}">${F.pp(totalGap)}</td>
+        <td>기대와 실제의 차이</td></tr>
+    <tr><td>참고 · 이론 변동성 손실</td><td class="mono">${F.sgn(-theo)}</td>
+        <td>(${L}²−${L}) × 분산 ÷ 2. 기초자산 변동성 ${F.pct(s*Math.sqrt(ANN),1)} 기준 근사값</td></tr>
+    </tbody>`;
+  document.getElementById("levResidNote").textContent=
+    "① → ② 는 상품 구조(일별 재조정)가 만든 차이이고, ② → ③ 은 비용이 만든 차이입니다. 경로효과는 시장이 어떻게 움직였는지에 따라 부호가 바뀝니다.";
+
+  const series=[{v:bp,color:"--base",w:1.6}];
+  if(long)series.push({v:np,color:"--naive",w:1.6,dash:"5 4"});
+  series.push({v:dp,color:"--ink3",w:1.6,dash:"2 3"});
+  series.push({v:ap,color:"--signal-line",w:2.4});
+  lineChart(document.getElementById("levChart"),series,idx.map(i=>DATES[i]),760,300);
+
+  let best=null;const j0=idx[0],j1=idx[idx.length-1],span=j1-j0,
+        st=Math.max(1,Math.floor(span/400)),cap=Math.floor(span*.95);
+  for(let s0=j0;s0<j1;s0+=st){const v0=b.px[s0];if(v0==null)continue;
+    for(let s1=Math.min(j1,s0+cap);s1>s0+ANN*.75;s1-=st){const v1=b.px[s1];if(v1==null)continue;
+      if(Math.abs(v1/v0-1)<=.03){const q=spanOf(a.px,s0,s1);
+        if(q&&(!best||s1-s0>best.len))best={a:s0,b:s1,len:s1-s0,lt:q.total};break;}}}
+  const fc=document.getElementById("levFlatCells"),fn=document.getElementById("levFlatNote");
+  if(best){const q=spanOf(b.px,best.a,best.b);
+    fc.innerHTML=cellHTML([
+      ["구간",`${DATES[best.a].slice(2)} ~ ${DATES[best.b].slice(2)}`,`${(best.len/ANN).toFixed(1)}년 보유 가정`,""],
+      ["기초자산 결과",F.sgn(q.total),a.baseName+" · 사실상 제자리",q.total<0?"neg":"pos"],
+      ["이 상품 결과",F.sgn(best.lt),a.name,best.lt<0?"neg":"pos"],
+      ["상품 − 기초자산",F.pp(best.lt-q.total),"같은 기간",best.lt-q.total<0?"neg":"pos"]]);
+    fn.textContent="방향을 맞히고 틀린 문제가 아닙니다. 기초자산이 출발점으로 되돌아온 구간인데도 결과가 달랐다면, 그 차이는 상품 구조에서 나온 것입니다.";
+  }else{fc.innerHTML=cellHTML([["결과","해당 구간 없음","이 계측 창에는 기초자산이 출발점으로 되돌아온 9개월 이상 구간이 없습니다. 구간을 늘려보십시오.",""]]);fn.textContent="";}
+}
+
+/* ================= 2. 분산 ================= */
+let divYears=3,picked=new Set();
+const PRESETS={chip:["005930.KS","000660.KS","042700.KS"],
+  batt:["373220.KS","006400.KS","247540.KQ","086520.KQ","051910.KS"],
+  mixed:["005930.KS","000660.KS","373220.KS","247540.KQ","207940.KS","005380.KS","105560.KS","035420.KS"]};
+function renderPicks(){
+  const g={};Object.entries(A).forEach(([tk,a])=>{if(a.cat!=="stock")return;(g[a.grp]=g[a.grp]||[]).push([tk,a]);});
+  document.getElementById("divPicks").innerHTML=Object.entries(g).map(([n,l])=>
+    `<div class="gname">${n}</div><div class="picks">`+l.map(([tk,a])=>
+      `<button class="pick" data-tk="${tk}" aria-pressed="${picked.has(tk)}">${a.name}</button>`).join("")+`</div>`).join("");
+}
+document.getElementById("divPicks").addEventListener("click",e=>{
+  const b=e.target.closest(".pick");if(!b)return;const tk=b.dataset.tk;
+  picked.has(tk)?picked.delete(tk):picked.add(tk);
+  b.setAttribute("aria-pressed",picked.has(tk));renderDiv();});
+function renderDiv(){
+  const {i0,i1}=rangeIdx(divYears);
+  document.getElementById("divWindow").textContent=`계측 창 ${DATES[i0]} ~ ${DATES[i1]}`;
+  renderAI(document.getElementById("aiDivBelief"),document.getElementById("aiDivBody"),EXPLAIN_DIV);
+  const tks=[...picked].filter(t=>A[t]),k=tks.length;
+  const vt=document.getElementById("divVerdictText");
+  const clear=()=>{document.getElementById("divNeff").textContent="—";
+    ["divCells","divPain"].forEach(i=>document.getElementById(i).innerHTML="");
+    document.getElementById("divHeat").textContent="";document.getElementById("divChart").textContent="";};
+  if(k<2){clear();vt.textContent="종목을 두 개 이상 선택하면 실질 독립 베팅 수를 계산합니다.";return;}
+  const R=[];
+  for(let i=i0+1;i<=i1;i++){const row=[];let ok=true;
+    for(const t of tks){const p=A[t].px,x=p[i-1],y=p[i];
+      if(x==null||y==null||!isFinite(x)||!isFinite(y)||x<=0){ok=false;break;}row.push(y/x-1);}
+    if(ok)R.push(row);}
+  if(R.length<60){clear();vt.textContent="선택한 종목들의 공통 관측 기간이 짧아 계산할 수 없습니다. 계측 구간을 늘리거나 상장이 늦은 종목을 빼주십시오.";return;}
+  const cols=tks.map((_,j)=>R.map(r=>r[j])),C=[];let sq=0,off=0,cnt=0;
+  for(let i=0;i<k;i++){C.push([]);for(let j=0;j<k;j++){const c=i===j?1:corr(cols[i],cols[j]);
+    C[i][j]=c;sq+=c*c;if(i!==j){off+=c;cnt++;}}}
+  const neff=k*k/sq, avg=cnt?off/cnt:0;
+  let v=new Array(k).fill(1/Math.sqrt(k)),lam=0;
+  for(let it=0;it<200;it++){const w=new Array(k).fill(0);
+    for(let i=0;i<k;i++)for(let j=0;j<k;j++)w[i]+=C[i][j]*v[j];
+    const nn=Math.sqrt(w.reduce((s,x)=>s+x*x,0))||1;v=w.map(x=>x/nn);lam=nn;}
+  document.getElementById("divNeff").textContent=neff.toFixed(2)+"개";
+  vt.innerHTML=`<b>${k}종목</b>을 담았지만 서로 함께 움직이는 정도를 반영하면 실질적으로는
+    <b>${neff.toFixed(2)}개</b>에 걸고 있는 것과 같습니다. 종목 수 대비 <b>${(neff/k*100).toFixed(0)}%</b>만 분산으로 작동했습니다.`;
+  document.getElementById("divCells").innerHTML=cellHTML([
+    ["담은 종목 수",k+"개","명목",""],["실질 독립 베팅",neff.toFixed(2)+"개","상관 반영","sig"],
+    ["평균 상호상관",avg.toFixed(3),"1에 가까울수록 한 몸",""],
+    ["첫 공통요인 설명력",(lam/k*100).toFixed(0)+"%","하나의 흐름이 차지한 몫",""]]);
+  const svg=document.getElementById("divHeat");svg.textContent="";
+  const W=760,lab=118,cell=Math.min(46,(W-lab-16)/k),Hh=lab+cell*k+16;
+  svg.setAttribute("viewBox",`0 0 ${W} ${Hh}`);
+  for(let i=0;i<k;i++){
+    const t=el("text",{x:lab-8,y:lab+cell*i+cell/2+4,"text-anchor":"end","font-size":11.5,fill:css("--ink2")});
+    t.textContent=A[tks[i]].name;svg.appendChild(t);
+    const cx=lab+cell*i+cell/2,cy=lab-8;
+    const t2=el("text",{x:cx,y:cy,"font-size":11.5,fill:css("--ink2"),
+      transform:`rotate(-52 ${cx} ${cy})`,"text-anchor":"start"});
+    t2.textContent=A[tks[i]].name;svg.appendChild(t2);}
+  for(let i=0;i<k;i++)for(let j=0;j<k;j++){const c=C[i][j],op=Math.min(1,Math.abs(c))*.92;
+    svg.appendChild(el("rect",{x:lab+cell*j+1,y:lab+cell*i+1,width:cell-2,height:cell-2,rx:3,
+      fill:c>=0?css("--signal-line"):css("--base"),"fill-opacity":op.toFixed(3)}));
+    if(cell>=30){const t=el("text",{x:lab+cell*j+cell/2,y:lab+cell*i+cell/2+4,"text-anchor":"middle",
+      "font-size":10.5,fill:op>.55?css("--panel"):css("--ink2")});
+      t.setAttribute("font-family","ui-monospace, monospace");t.textContent=c.toFixed(2);svg.appendChild(t);}}
+  const eq=[1];for(const r of R)eq.push(eq[eq.length-1]*(1+mean(r)));
+  let peak=-Infinity,mdd=0,run=0,worst=0;
+  for(const x of eq){if(x>peak){peak=x;run=0;}else{run++;if(run>worst)worst=run;}mdd=Math.min(mdd,x/peak-1);}
+  const yrs=R.length/ANN,cagr=Math.pow(eq[eq.length-1],1/yrs)-1;
+  let w12=null;if(eq.length>ANN){w12=Infinity;for(let i=ANN;i<eq.length;i++)w12=Math.min(w12,eq[i]/eq[i-ANN]-1);}
+  document.getElementById("divPain").innerHTML=cellHTML([
+    ["연환산 수익",F.sgn(cagr),"비용·세금 제외",cagr<0?"neg":"pos"],
+    ["최대낙폭",F.pct(mdd,1),"고점 대비","neg"],
+    ["최악 12개월",F.sgn(w12),"12개월 보유 최저 구간",w12<0?"neg":"pos"],
+    ["최장 수중 기간",worst+"일","전 고점 회복까지",""]]);
+  lineChart(document.getElementById("divChart"),[{v:eq,color:"--signal-line",w:2.2}],null,760,240);
+}
+
+/* ================= 3. 손실 회복 ================= */
+let recYears=0;
+function renderRec(){
+  const a=A[document.getElementById("recSel").value];if(!a)return;
+  const {i0,i1}=rangeIdx(recYears), s=spanOf(a.px,i0,i1);
+  if(!s){document.getElementById("recNeed").textContent="—";return;}
+  const dd=ddOf(a.px,i0,i1), need=needFor(dd.mdd), w12=worst12(a.px,i0,i1);
+  document.getElementById("recWindow").textContent=`계측 창 ${DATES[s.fi]} ~ ${DATES[s.li]} · 관측 ${s.n}일`;
+  renderAI(document.getElementById("aiRecBelief"),document.getElementById("aiRecBody"),EXPLAIN_REC);
+  document.getElementById("recNeed").textContent=F.big(need);
+  document.getElementById("recVerdictText").innerHTML=
+    `<b>${a.name}</b>${eun(a.name)} 이 구간에서 최대 <b>${F.pct(dd.mdd,1)}</b>까지 떨어졌습니다
+     (저점 ${DATES[dd.at]}). 그 지점에서 원금으로 돌아오려면 <b>${F.big(need)}</b>의 수익이 필요했습니다.
+     전 고점을 회복하지 못한 채 지나간 기간은 최장 <b>${dd.under}거래일</b>이었습니다.`;
+  document.getElementById("recCells").innerHTML=cellHTML([
+    ["누적 결과",F.sgn(s.total),`${s.years.toFixed(1)}년 보유 가정`,s.total<0?"neg":"pos"],
+    ["최대낙폭",F.pct(dd.mdd,1),"고점 대비","neg"],
+    ["최악 12개월",F.sgn(w12),"12개월 보유 최저 구간",w12<0?"neg":"pos"],
+    ["최장 수중 기간",dd.under+"일","전 고점 회복까지",""]]);
+  const svg=document.getElementById("recChart");svg.textContent="";
+  const W=760,H=300,P={t:16,r:64,b:34,l:8};
+  const xMax=Math.min(.95,Math.max(.6,Math.abs(dd.mdd)+.1));
+  const yMax=Math.max(needFor(-xMax),1);
+  const X=l=>P.l+(l/xMax)*(W-P.l-P.r), Y=r=>P.t+(1-Math.min(r,yMax)/yMax)*(H-P.t-P.b);
+  const stp=niceStep(yMax/4);
+  for(let r=0;r<=yMax+1e-9;r+=stp){const y=Y(r);
+    svg.appendChild(el("line",{x1:P.l,x2:W-P.r,y1:y,y2:y,stroke:css("--rule2"),"stroke-width":1}));
+    const t=el("text",{x:W-P.r+8,y:y+4,fill:css("--ink3"),"font-size":11});
+    t.setAttribute("font-family","ui-monospace, monospace");
+    t.textContent="+"+(r*100).toFixed(0)+"%";svg.appendChild(t);}
+  let d="";for(let l=0;l<=xMax+1e-9;l+=.005){const r=needFor(-l);if(r>yMax*1.02)break;
+    d+=(d?"L":"M")+X(l).toFixed(1)+" "+Y(r).toFixed(1);}
+  svg.appendChild(el("path",{d,fill:"none",stroke:css("--signal-line"),"stroke-width":2.4,"stroke-linecap":"round"}));
+  for(const l of [.1,.2,.3,.5,.7,.9]){if(l>xMax)continue;
+    const t=el("text",{x:X(l),y:H-12,"text-anchor":"middle","font-size":11,fill:css("--ink3")});
+    t.setAttribute("font-family","ui-monospace, monospace");t.textContent="−"+(l*100)+"%";svg.appendChild(t);
+    svg.appendChild(el("line",{x1:X(l),x2:X(l),y1:P.t,y2:H-P.b,stroke:css("--rule2"),"stroke-width":1}));}
+  const ml=Math.min(Math.abs(dd.mdd),xMax), mr=Math.min(needFor(dd.mdd),yMax);
+  svg.appendChild(el("line",{x1:X(ml),x2:X(ml),y1:P.t,y2:H-P.b,stroke:css("--loss"),"stroke-width":1.5,"stroke-dasharray":"4 3"}));
+  svg.appendChild(el("circle",{cx:X(ml),cy:Y(mr),r:5,fill:css("--loss")}));
+  const lt=el("text",{x:Math.min(X(ml)+10,W-P.r-120),y:Y(mr)-12,"font-size":12,fill:css("--loss"),"font-weight":600});
+  lt.textContent=`이 상품 ${F.pct(dd.mdd,1)} → ${F.big(need)}`;svg.appendChild(lt);
+  document.getElementById("recTable").innerHTML=`
+    <thead><tr><th>손실률</th><th>원금 회복에 필요한 수익률</th><th>체감</th></tr></thead><tbody>`+
+    [[-.1,"10%를 잃으면"],[-.2,"20%를 잃으면"],[-.3,"30%를 잃으면"],[-.5,"절반을 잃으면"],
+     [-.7,"70%를 잃으면"],[-.9,"90%를 잃으면"]].map(([l,txt])=>
+      `<tr><td>${(l*100).toFixed(0)}%</td><td class="mono sig">${F.big(needFor(l))}</td><td>${txt} ${F.big(needFor(l))}가 올라야 본전</td></tr>`).join("")+
+    `<tr class="total"><td>이 상품 최대낙폭 ${F.pct(dd.mdd,1)}</td><td class="mono neg">${F.big(need)}</td><td>${DATES[dd.at]} 저점 기준</td></tr></tbody>`;
+}
+
+/* ================= 부팅 ================= */
+function boot(db){
+  DATES=db.dates;A=db.assets;
+  Object.values(A).forEach(a=>{a.baseName=(A[a.base]&&A[a.base].name)||a.base;});
+  const ls=document.getElementById("levSel");
+  ls.innerHTML=Object.entries(A).filter(([,a])=>a.cat==="lev"&&A[a.base])
+    .map(([tk,a])=>`<option value="${tk}">${a.name} (${a.mult>0?"+":""}${a.mult}배)</option>`).join("");
+  ls.addEventListener("change",()=>{renderIntents();renderLev();});
+  const rs=document.getElementById("recSel");
+  const order={lev:0,base:1,stock:2};
+  rs.innerHTML=Object.entries(A).sort((x,y)=>order[x[1].cat]-order[y[1].cat])
+    .map(([tk,a])=>`<option value="${tk}">${a.name}</option>`).join("");
+  rs.addEventListener("change",renderRec);
+  segWire("levRange",b=>{levYears=+b.dataset.y;renderLev();});
+  segWire("divRange",b=>{divYears=+b.dataset.y;renderDiv();});
+  segWire("recRange",b=>{recYears=+b.dataset.y;renderRec();});
+  document.getElementById("divPresets").addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    picked=b.dataset.p==="clear"?new Set():new Set((PRESETS[b.dataset.p]||[]).filter(t=>A[t]));
+    renderPicks();renderDiv();});
+  picked=new Set(PRESETS.mixed.filter(t=>A[t]));renderPicks();
+  // 데이터에 실제로 존재하는 종목은 '범위 밖' 목록에서 제거한다(데이터 확장 시 자동 반영)
+  /* '데이터 범위 밖' 목록이 거짓말을 하지 않도록, 실제로 적재된 자산과 겹치는 이름은 자동으로 제외한다.
+     데이터가 늘어나면 이 목록은 스스로 줄어든다(사람이 갱신하지 않아도 표시가 어긋나지 않는다). */
+  OUT_OF_RANGE=OUT_OF_RANGE.filter(n=>{
+    const N=nsp(n);
+    if(Object.values(A).some(a=>nsp(a.name||"").includes(N)))return false;
+    if(ALIAS_LIST.some(([ph,tk])=>A[tk]&&nsp(ph)===N))return false;
+    return true;});
+  /* [AI 설계 원장]의 수량은 배포된 파일의 실제 배열 길이를 세어 표시한다.
+     문서와 화면의 숫자가 어긋날 수 있는 여지를 코드 차원에서 없앤다. */
+  {
+    const aliasN=ALIAS_LIST.filter(([,tk])=>A[tk]).length;
+    const ambN=Object.keys(AMBIGUOUS).length;
+    const kwN=Object.values(KW).reduce((s,v)=>s+v.length,0);
+    const spN=Object.values(SP_KW).reduce((s,v)=>s+v.length,0);
+    const knN=Object.keys(KNUM).length, fuN=FUTURE_KW.length;
+    const autoN=Object.keys(A).length*2;
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    set("ledAlias",aliasN+"개");
+    set("ledAmb","모호 표현 "+ambN+"개");
+    set("ledKw",(kwN+spN+knN+fuN)+"개");
+    set("ledKwBreak",`미래예측 ${fuN} · 진술 근거 ${spN} · 유형 분류 ${kwN} · 한글 수사 ${knN}`);
+    set("ledTotal",(autoN+aliasN)+"개");
+    set("ledAuto",`${autoN}개(종목명 ${Object.keys(A).length} · 티커 ${Object.keys(A).length})`);
+  }
+  document.getElementById("dataNote").textContent=
+    `배당 재투자를 반영한 수정 종가 기준, ${DATES[0]} ~ ${DATES[DATES.length-1]} (${DATES.length} 거래일), 자산 ${Object.keys(A).length}종. 데이터 기준일 ${DATES[DATES.length-1]} — 최근 거래일 종가이며 장중 가격이 아닙니다. 스냅샷 생성일 ${db.generated}. `;
+  renderIntents();renderLev();renderDiv();renderRec();
+
+  document.getElementById("claimExamples").innerHTML=CLAIM_EXAMPLES.map((t,i)=>
+    `<button type="button" class="claimEx" data-i="${i}">${t}</button>`).join("");
+  document.getElementById("claimExamples").addEventListener("click",e=>{
+    const b=e.target.closest(".claimEx");if(!b)return;
+    const t=CLAIM_EXAMPLES[+b.dataset.i];
+    document.getElementById("claimInput").value=t;runClaimCheck(t);});
+  document.getElementById("claimGo").addEventListener("click",()=>
+    runClaimCheck(document.getElementById("claimInput").value));
+  document.getElementById("claimInput").addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))runClaimCheck(e.target.value);});
+  const engOpen=on=>{document.body.classList.toggle("eng",on);
+    document.getElementById("engineToggle").setAttribute("aria-expanded",on?"true":"false");
+    document.getElementById("engineSign").textContent=on?"−":"+";
+    document.getElementById("engineToggle").firstChild.nodeValue=
+      on?"근거 계측 엔진 접기 ":"근거 계측 엔진 직접 열기 ";};
+  document.getElementById("engineToggle").addEventListener("click",()=>
+    engOpen(!document.body.classList.contains("eng")));
+  document.getElementById("auditAmb").addEventListener("click",e=>{
+    const b=e.target.closest(".ambtn");if(!b)return;
+    forcedTicker=b.dataset.tk;
+    runClaimCheck(document.getElementById("claimInput").value);
+    forcedTicker=null;});
+  document.getElementById("auditEvidence").addEventListener("click",()=>{
+    engOpen(true);activateTab(auditTab);
+    document.querySelector("nav.tabs").scrollIntoView({behavior:"smooth",block:"start"});});
+}
+/* 데이터 적재 — 단일 파일 배포 시에는 __DATA__가 본문에 들어 있고,
+   데이터 파일을 따로 올린 경우에는 같은 폴더에서 읽는다(외부 도메인 호출 없음). */
+if(typeof __DATA__!=="undefined"){boot(__DATA__);}
+else{
+  const CANDS=["alphaguard_data_v3.json","real_data.json","alphaguard_data.json"];
+  (async()=>{
+    for(const f of CANDS){
+      try{
+        const r=await fetch(f,{cache:"no-store"});
+        if(!r.ok)continue;
+        const d=await r.json();
+        if(!d||!d.dates||!d.assets)continue;
+        boot(d);
+        return;
+      }catch(e){/* 다음 후보 파일을 시도한다 */}
+    }
+    const box=document.getElementById("claimNoMatch");
+    if(box){
+      box.innerHTML="<b>데이터 파일을 불러오지 못했습니다.</b><br>"+
+        "index.html과 같은 폴더에 <code>alphaguard_data_v3.json</code>이 있어야 합니다"+
+        (location.protocol==="file:"
+          ? " (지금은 파일을 직접 연 상태라 브라우저가 같은 폴더의 파일 읽기를 막습니다. 웹 주소로 열어 주십시오)."
+          : ".")+
+        " 감사는 이 파일의 실제 시세로만 수행하며, 데이터 없이 임의의 결과를 표시하지 않습니다.";
+      box.className="nomatch show";
+    }
+    const go=document.getElementById("claimGo");
+    if(go){go.disabled=true;go.textContent="데이터 없음 — 감사 불가";}
+  })();
+}
+</script>
 </body>
 </html>
